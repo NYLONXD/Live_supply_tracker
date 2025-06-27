@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "framer-motion": "^12.18.1"
+    "framer-motion": "^12.18.1",
+    "react-router-dom": "^7.6.2"
   }
 }

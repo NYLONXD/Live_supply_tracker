@@ -5,6 +5,9 @@ import Login from './Login';
 import Signup from './Signup';
 import Dashboard from './Dashboard';
 import ForgetPassword from './forgetPassword';
+import AdminDashboard from './AdminDashboard';
+
+const ADMIN_EMAIL = 'nylonxd@gmail.com'; // <-- Make sure this is lowercase
 
 export default function AuthWrapper() {
   const [user, setUser] = useState(null);
@@ -19,26 +22,37 @@ export default function AuthWrapper() {
     return () => unsub();
   }, []);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-800 to-pink-800 text-white text-2xl font-bold">Loading...</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-800 to-pink-800 text-white text-2xl font-bold">
+        Loading...
+      </div>
+    );
 
   if (!user) {
     return (
       <div>
         {mode === 'login' ? (
-          <Login 
-            onLogin={() => setUser(auth.currentUser)} 
+          <Login
+            onLogin={() => setUser(auth.currentUser)}
             onSwitchToSignup={() => setMode('signup')}
             onSwitchToForgot={() => setMode('forgot')}
           />
         ) : mode === 'signup' ? (
-          <Signup onSignup={() => setUser(auth.currentUser)} onSwitchToLogin={() => setMode('login')} />
+          <Signup
+            onSignup={() => setUser(auth.currentUser)}
+            onSwitchToLogin={() => setMode('login')}
+          />
         ) : (
           <ForgetPassword onSwitchToLogin={() => setMode('login')} />
         )}
       </div>
     );
   }
-  // Authenticated: show dashboard with logout
+
+  const email = user.email.toLowerCase(); // Ensure lowercase comparison
+  const isAdmin = email === ADMIN_EMAIL;
+
   return (
     <div className="relative">
       <button
@@ -47,7 +61,7 @@ export default function AuthWrapper() {
       >
         Logout
       </button>
-      <Dashboard />
+      {isAdmin ? <AdminDashboard /> : <Dashboard />}
     </div>
   );
 }
