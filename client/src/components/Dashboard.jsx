@@ -4,6 +4,7 @@ import ShipmentSidebar from './ShipmentSidebar';
 import ShipmentHistory from './ShipmentHistory';
 import LiveTracker from './LiveTracker';
 import { ShipmentsProvider } from '../context/ShipmentsContext';
+import ETAPredictor from './ETAPredictor';
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -42,10 +43,10 @@ const Dashboard = () => {
 
           {/* Header */}
           <div className="hidden md:block text-3xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-purple-400 animate-pulse">
-            📦 Live Supply Tracker
+            📦 Live Supply Dashboard
           </div>
 
-          {/* Control Panel */}
+          {/* Control Panel / Utility Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             <div className="group bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out">
               <div className="flex items-center gap-3">
@@ -70,23 +71,28 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Map and Shipment History */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
-            <div className="relative bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-2xl hover:shadow-purple-700/50 transition-all">
-              <LiveTracker />
-              {/* Zoom Controls */}
-              <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom in">+</button>
-                <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom out">−</button>
+          {/* Main Content Layout - Responsive Grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1">
+            {/* Left Section - LiveTracker (takes 2/3 on xl screens) */}
+            <div className="xl:col-span-2">
+              <div className="relative bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-2xl hover:shadow-purple-700/50 transition-all h-full ">
+                <LiveTracker />
+                {/* Zoom Controls */}
+                <div className="absolute top-4 right-4 flex flex-col gap-2">
+                  <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom in">+</button>
+                  <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom out">−</button>
+                </div>
               </div>
             </div>
-            <div className="bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-2xl hover:shadow-purple-700/50 transition-all">
-              <ShipmentHistory />
-              {/* Zoom Controls */}
-              <div className="absolute top-4 right-4 flex flex-col gap-2">
-                <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom in">+</button>
-                <button className="w-10 h-10 text-xl rounded-full bg-white/20 hover:bg-white/30 focus:ring-2 focus:ring-indigo-500 transition-all" aria-label="Zoom out">−</button>
-              </div>  
+
+            {/* Right Section - ShipmentHistory and ETAPredictor (takes 1/3 on xl screens) */}
+            <div className="space-y-6">
+              <div className="bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-2xl hover:shadow-purple-700/50 transition-all">
+                <ShipmentHistory />
+              </div>
+              <div className="bg-white/10 border border-purple-600/40 backdrop-blur-xl p-6 rounded-2xl shadow-2xl hover:shadow-purple-700/50 transition-all">
+                <ETAPredictor />
+              </div>
             </div>
           </div>
         </div>
@@ -95,10 +101,8 @@ const Dashboard = () => {
         {isSidebarOpen && (
           <div className="fixed inset-0 bg-black/50 md:hidden z-40" onClick={toggleSidebar}></div>
         )}
-        
       </div>
     </ShipmentsProvider>
-   
   );
 };
 

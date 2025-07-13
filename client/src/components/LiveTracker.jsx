@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useShipments } from '../context/ShipmentsContext';
@@ -8,11 +8,13 @@ mapboxgl.accessToken = 'pk.eyJ1Ijoibnlsb254ZCIsImEiOiJjbWJ6ZndlbmUxdWh4MmxzMXVlN
 const LiveTracker = () => {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
+  const [distance, setDistance] = useState(null);
   const [eta, setEta] = useState(null);
+  const mapRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
-  const mapContainerRef = useRef(null);
   const { addShipment } = useShipments();
 
+  // Geocode a location name to coordinates
   const geocode = async (place) => {
     const res = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(place)}.json?access_token=${mapboxgl.accessToken}`
@@ -21,7 +23,14 @@ const LiveTracker = () => {
     return data.features[0]?.geometry.coordinates;
   };
 
-  const getRoute = async () => {
+  const formatETA = (seconds) => {
+    const mins = seconds / 60;
+    return mins < 60
+      ? `${mins.toFixed(1)} minutes`
+      : `${(mins / 60).toFixed(2)} hours`;
+  };
+
+  const getRouteAndPredict = async () => {
     const from = await geocode(source);
     const to = await geocode(destination);
     if (!from || !to) return alert('Invalid location(s)');
@@ -31,23 +40,27 @@ const LiveTracker = () => {
     );
     const routeData = await routeRes.json();
     const route = routeData.routes[0];
-    const predictedETA = route.duration / 3600; // in hours
-    setEta(predictedETA);
+    const duration = route.duration; // in seconds
+    const distKm = (route.distance / 1000).toFixed(2);
 
-    // Initialize or update the map
+    setEta(duration);
+    setDistance(distKm);
+
+    // Mapbox setup
     if (!mapInstance) {
-      const newMap = new mapboxgl.Map({
-        container: mapContainerRef.current,
+      const map = new mapboxgl.Map({
+        container: mapRef.current,
         style: 'mapbox://styles/mapbox/streets-v11',
         center: from,
         zoom: 6,
       });
-      newMap.on('load', () => {
-        newMap.addSource('route', {
+
+      map.on('load', () => {
+        map.addSource('route', {
           type: 'geojson',
           data: { type: 'Feature', geometry: route.geometry },
         });
-        newMap.addLayer({
+        map.addLayer({
           id: 'route',
           type: 'line',
           source: 'route',
@@ -55,7 +68,8 @@ const LiveTracker = () => {
           paint: { 'line-color': '#ff0077', 'line-width': 4 },
         });
       });
-      setMapInstance(newMap);
+
+      setMapInstance(map);
     } else {
       mapInstance.getSource('route')?.setData({
         type: 'Feature',
@@ -64,56 +78,51 @@ const LiveTracker = () => {
       mapInstance.flyTo({ center: from, zoom: 6 });
     }
 
-    // Save shipment using context (auto-updates all consumers)
+    // Add to shipment history
     await addShipment({
       from: source,
       to: destination,
-      lat: to[1], 
+      lat: to[1],
       lng: to[0],
-      eta: predictedETA
+      eta: duration / 3600, // convert seconds to hours
     });
   };
 
-
   return (
-    <div className="p-4 bg-white rounded-xl mt-4">
-      <h3 className="font-semibold text-lg mb-2 text-black">🧭 Live Tracker</h3>
-      <div className="flex flex-col md:flex-row gap-2 mb-3">
+    <div className="p-4 bg-white/10 border border-purple-600/40 backdrop-blur-xl rounded-2xl shadow-lg">
+      <h3 className="font-semibold text-lg mb-4 text-indigo-300">🧭 Live Tracker</h3>
+
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
         <input
           value={source}
           onChange={(e) => setSource(e.target.value)}
-          placeholder="Start from..."
-          className="border p-2 rounded w-full bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-purple-400"
+          placeholder="From..."
+          className="rounded px-3 py-2 w-full bg-white text-black focus:ring-2 focus:ring-purple-500"
         />
         <input
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
-          placeholder="Go to..."
-          className="border p-2 rounded w-full bg-white text-black placeholder-gray-400 focus:ring-2 focus:ring-purple-400"
+          placeholder="To..."
+          className="rounded px-3 py-2 w-full bg-white text-black focus:ring-2 focus:ring-purple-500"
         />
         <button
-          onClick={getRoute}
-          className="bg-purple-600 text-white px-4 py-2 rounded whitespace-nowrap"
+          onClick={getRouteAndPredict}
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-all"
         >
           Track
         </button>
       </div>
 
-      {eta && (
-        <div className="bg-white rounded-2xl p-4 shadow-xl mt-2 text-center">
-          <h2 className="text-xl font-semibold text-gray-800">🧠 AI-Predicted ETA</h2>
-          <div className="text-3xl font-bold text-indigo-700">{eta.toFixed(2)} hrs</div>
+      {(distance && eta) && (
+        <div className="bg-black/30 text-white p-4 rounded-xl mb-4 shadow-inner text-center">
+          <p className="text-md font-semibold">🛣️ Distance: <span className="text-indigo-300">{distance} km</span></p>
+          <p className="text-md font-semibold">⏱️ ETA: <span className="text-indigo-300">{formatETA(eta)}</span></p>
         </div>
       )}
 
-      <div ref={mapContainerRef} className="h-[400px] rounded-xl overflow-hidden mt-4" />
+      <div ref={mapRef} className="h-[400px] rounded-xl overflow-hidden" />
     </div>
   );
 };
 
 export default LiveTracker;
-// This code defines a LiveTracker component that allows users to input a source and destination location,
-// fetches the route using Mapbox APIs, and displays it on a map. It also calculates and displays the AI-predicted ETA based on the route duration.
-// The component uses Mapbox
-// for mapping and geocoding, and it handles user input for locations. The map updates dynamically based on the input locations.
-// The component is styled with Tailwind CSS classes for a modern look and feel.
