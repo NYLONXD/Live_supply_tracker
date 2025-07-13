@@ -6,6 +6,7 @@ const axios = require('axios');
 const Shipment = require('./models/Shipment');
 const mongoose = require('mongoose');
 const shipmentRoutes = require('./routes/shipments');
+const taskRoutes = require('./routes/taskRoutes');
 const app = express();
 
 app.use(cors());
@@ -45,3 +46,4 @@ io.on('connection', (socket) => {
 server.listen(5000, () => console.log('Server running on port 5000'));
 
 app.use('/api/shipments', shipmentRoutes);
+app.use('/api/tasks', taskRoutes);

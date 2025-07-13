@@ -1,9 +1,10 @@
+// Signup.js
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
-import signupAvatar from '../assets/signup-avatar.svg'; // Put your image in /assets
+import signupAvatar from '../assets/signup-avatar.svg';
 
 export default function Signup({ onSignup, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -17,6 +18,24 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
   const [error, setError] = useState('');
   const [typingPassword, setTypingPassword] = useState(false);
 
+  const handleGoogleSignup = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        createdAt: new Date()
+      });
+      if (onSignup) onSignup();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -27,7 +46,13 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
 
     const { firstName, lastName, contactCode, contactNumber, email, password } = formData;
     const fullContact = `${contactCode} ${contactNumber}`;
-    
+
+    // Only Gmail check
+    if (!email.endsWith("@gmail.com")) {
+      setError("Only Gmail addresses are allowed.");
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -45,6 +70,9 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
         createdAt: new Date()
       });
 
+      await sendEmailVerification(user);
+      alert("Verification email sent. Please check your Gmail and verify before logging in.");
+
       if (onSignup) onSignup();
     } catch (err) {
       setError(err.message);
@@ -54,8 +82,7 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-900 via-fuchsia-700 to-pink-800 px-4">
       <div className="bg-white rounded-2xl shadow-2xl flex max-w-5xl w-full overflow-hidden">
-        
-        {/* Form Section (Left) */}
+        {/* Left: Form */}
         <motion.form
           onSubmit={handleSignup}
           initial={{ x: -100, opacity: 0 }}
@@ -67,7 +94,17 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
             ✨ Let's Get Started
           </h2>
 
-          {/* First and Last Name */}
+          <button
+            onClick={handleGoogleSignup}
+            type="button"
+            className="bg-white text-black py-2 rounded-xl font-semibold shadow-md flex items-center justify-center gap-2 border hover:bg-gray-50 transition"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+            Sign up with Google
+          </button>
+
+          <div className="text-center text-white text-sm">or use your email</div>
+
           <div className="flex gap-3">
             <motion.input
               type="text"
@@ -93,7 +130,6 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
             />
           </div>
 
-          {/* Contact Code + Number */}
           <div className="flex gap-3">
             <select
               name="contactCode"
@@ -118,12 +154,10 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
               value={formData.contactNumber}
               onChange={handleChange}
               pattern="[0-9]{7,15}"
-              title="Enter a valid phone number"
               required
             />
           </div>
 
-          {/* Email with rotation */}
           <motion.input
             type="email"
             name="email"
@@ -136,7 +170,6 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
             transition={{ duration: 0.3 }}
           />
 
-          {/* Password with auto-closing eye */}
           <div className="relative">
             <input
               type="password"
@@ -156,51 +189,33 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
             </div>
           </div>
 
-          {/* Error Message */}
           {error && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-500 text-sm text-center"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-sm text-center">
               {error}
             </motion.div>
           )}
 
-          {/* Submit Button */}
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.03 }}
-            type="submit"
-            className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-xl font-semibold shadow-md transition-all"
-          >
+          <motion.button whileTap={{ scale: 0.97 }} whileHover={{ scale: 1.03 }} type="submit" className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-xl font-semibold shadow-md transition-all">
             Sign Up
           </motion.button>
 
           <div className="text-center text-white text-sm mt-2 text-gray-900">
             Already have an account?{' '}
-            <button
-              type="button"
-              onClick={onSwitchToLogin}
-              className="underline text-pink-900 hover:text-white transition-all "
-            >
+            <button type="button" onClick={onSwitchToLogin} className="underline text-pink-900 hover:text-white transition-all">
               Login
             </button>
           </div>
         </motion.form>
 
-        {/* Right Image/Illustration */}
+        {/* Right Image */}
         <div className="w-1/2 bg-gradient-to-br from-purple-800 to-pink-700 flex items-center justify-center p-8">
           <img src={signupAvatar} alt="Signup Visual" className="w-64 animate-float" />
         </div>
       </div>
-
-      {/* Float Animation */}
       <style>{`
         .animate-float {
           animation: floatImage 4s ease-in-out infinite;
         }
-
         @keyframes floatImage {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-15px); }

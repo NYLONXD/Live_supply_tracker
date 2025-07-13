@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Shipment = require('../models/Shipment');
-const { getAnalytics } = require('../controllers/analyticsController');
+// const { getAnalytics } = require('../controllers/analyticsController');
+const { getAnalytics, getShipmentsPerDay } = require('../controllers/analyticsController');
 
 
 // Middleware to simulate authentication and set req.userId
@@ -66,6 +67,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 router.get('/analytics', getAnalytics);
+
+
+router.get('/analytics/per-day', getShipmentsPerDay);
 
 
 module.exports = router;
