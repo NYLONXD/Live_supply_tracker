@@ -1,3 +1,1 @@
-/* .glass-button {
-  @apply bg-[#1f0036]/80 backdrop-blur-md border border-fuchsia-500/30 text-white w-10 h-10 rounded-lg hover:shadow-[0_0_10px_2px_#ff00cc] transition;
-} */
+@import "tailwindcss";

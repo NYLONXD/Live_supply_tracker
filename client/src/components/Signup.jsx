@@ -90,7 +90,7 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
           transition={{ type: 'spring', stiffness: 80 }}
           className="w-1/2 p-10 flex flex-col gap-5 bg-white/10 backdrop-blur-md border-r border-white/20"
         >
-          <h2 className="text-3xl font-extrabold text-white text-center drop-shadow-md text-purple-400">
+          <h2 className="text-3xl font-extrabold text-center drop-shadow-md text-purple-400">
             ✨ Let's Get Started
           </h2>
 
@@ -199,7 +199,7 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
             Sign Up
           </motion.button>
 
-          <div className="text-center text-white text-sm mt-2 text-gray-900">
+          <div className="text-center  text-sm mt-2 text-gray-900">
             Already have an account?{' '}
             <button type="button" onClick={onSwitchToLogin} className="underline text-pink-900 hover:text-white transition-all">
               Login
