@@ -9,7 +9,7 @@ import os
 # Sample data
 data = pd.DataFrame({
     "distance": [10, 20, 30, 40],
-    "base_speed": [40, 40, 40, 40],
+    "base_speed": [40, 60, 70, 40],
     "traffic_factor": [1.0, 1.1, 0.9, 1.2],
     "vehicle": ["Truck", "Car", "Bike", "Car"],
     "weather": ["Clear", "Rainy", "Foggy", "Clear"],

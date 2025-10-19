@@ -5,7 +5,7 @@ fastapi==0.115.12
 h11==0.16.0
 idna==3.10
 joblib==1.5.1
-numpy==2.3.0
+numpy==2.3.1
 pandas==2.3.0
 pydantic==2.11.7
 pydantic_core==2.33.2
