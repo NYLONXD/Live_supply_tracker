@@ -1,37 +1,45 @@
-const app = require('express');
 const jwt = require('jsonwebtoken');
-const config = require('../config/config');
-const User = require('../models/user.model');
-const Role = require('../models/role.model');
-const { promisify } = require('util');
-const verifyAsync = promisify(jwt.verify);
-const authMiddleware = {};
-authMiddleware.verifyToken = async (req, res, next) => {
-    const token = req.headers['x-access-token'];
-    if (!token) {
-        return res.status(403).send({ message: 'No token provided!' });
-    }
-    try {
-        const decoded = await verifyAsync(token, config.secret);
-        req.userId = decoded.id;
-        next();
-    } catch (err) {
-        return res.status(401).send({ message: 'Unauthorized!' });
-    }
-};
-authMiddleware.isAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.userId);
-        const roles = await Role.find({ _id: { $in: user.roles } });
-        for (let role of roles) {
-            if (role.name === 'admin') {
-                return next();
-            }
-        }
-        return res.status(403).send({ message: 'Require Admin Role!' });
-    } catch (err) {
-        return res.status(500).send({ message: err });
-    }
-};
-module.exports = authMiddleware;
+const User = require('../models/user.models');
+const asyncHandler = require('../utils/asyncHandle.utils');
 
+// Verify JWT token
+exports.protect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: 'Not authorized, no token' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id).select('-__v');
+    
+    if (!req.user || !req.user.isActive) {
+      return res.status(401).json({ message: 'User not found or inactive' });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Not authorized, token failed' });
+  }
+});
+
+// Check if user is admin
+exports.admin = (req, res, next) => {
+  if (req.user && req.user.isAdmin()) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as admin' });
+  }
+};
+
+// Generate JWT token
+exports.generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d',
+  });
+};

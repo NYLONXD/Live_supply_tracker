@@ -1,70 +1,104 @@
-// server/controllers/analyticsController.js
-const Shipment = require('../models/Shipment');
+const Shipment = require('../models/Shipment.models');
+const Route = require('../models/Router.models');
+const asyncHandler = require('../utils/asyncHandle.utils');
+const { cache } = require('../config/redis.config');
 
-const getShipmentsPerDay = async (req, res) => {
-  try {
-    const pipeline = [
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ];
-
-    const data = await Shipment.aggregate(pipeline);
-    const formatted = data.map(d => ({
-      date: d._id,
-      count: d.count
-    }));
-
-    res.json(formatted);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to get shipment stats" });
+// @desc    Get general analytics
+// @route   GET /api/analytics
+// @access  Private/Admin
+exports.getAnalytics = asyncHandler(async (req, res) => {
+  const cacheKey = 'analytics:general';
+  
+  const cached = await cache.get(cacheKey);
+  if (cached) {
+    return res.status(200).json(cached);
   }
-};
 
-const getAnalytics = async (req, res) => {
-  try {
-    const shipments = await Shipment.find();
-    const totalShipments = shipments.length;
-    const totalETA = shipments.reduce((sum, s) => sum + (s.eta || 0), 0);
-    const avgETA = totalShipments > 0 ? totalETA / totalShipments : 0;
+  const [totalShipments, shipments, routes] = await Promise.all([
+    Shipment.countDocuments(),
+    Shipment.find().select('eta'),
+    Route.find().sort({ usageCount: -1 }).limit(6),
+  ]);
 
-    // Count routes
-    const routeMap = {};
-    shipments.forEach(s => {
-      const route = s.from && s.to ? `${s.from} → ${s.to}` : 'Unknown';
-      routeMap[route] = (routeMap[route] || 0) + 1;
-    });
+  const totalETA = shipments.reduce((sum, s) => sum + (s.eta || 0), 0);
+  const averageETA = totalShipments > 0 ? totalETA / totalShipments : 0;
 
-    const sortedRoutes = Object.entries(routeMap)
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, value]) => ({ name, value }));
+  const topRoutes = routes.map(r => ({
+    name: `${r.from} → ${r.to}`,
+    value: r.usageCount,
+  }));
 
-    const topRoute = sortedRoutes[0]?.name || 'N/A';
+  const analytics = {
+    totalShipments,
+    averageETA,
+    topRoute: topRoutes[0]?.name || 'N/A',
+    topRoutes,
+  };
 
-    res.json({
-      totalShipments,
-      averageETA: avgETA,
-      topRoute,
-      topRoutes: sortedRoutes.slice(0, 6) // Send top 6
-    });
+  await cache.set(cacheKey, analytics, 600); // 10 min cache
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
+  res.status(200).json(analytics);
+});
+
+// @desc    Get shipments per day
+// @route   GET /api/analytics/per-day
+// @access  Private/Admin
+exports.getShipmentsPerDay = asyncHandler(async (req, res) => {
+  const cacheKey = 'analytics:per-day';
+  
+  const cached = await cache.get(cacheKey);
+  if (cached) {
+    return res.status(200).json(cached);
   }
-};
 
+  const data = await Shipment.aggregate([
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+        },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } },
+    { $limit: 30 } // Last 30 days
+  ]);
 
-module.exports = { getAnalytics };
-module.exports = {
-  getAnalytics,
-  getShipmentsPerDay
-};
+  const formatted = data.map(d => ({
+    date: d._id,
+    count: d.count
+  }));
 
+  await cache.set(cacheKey, formatted, 600);
+
+  res.status(200).json(formatted);
+});
+
+// @desc    Get user-specific analytics
+// @route   GET /api/analytics/me
+// @access  Private
+exports.getUserAnalytics = asyncHandler(async (req, res) => {
+  const cacheKey = `analytics:user:${req.user._id}`;
+  
+  const cached = await cache.get(cacheKey);
+  if (cached) {
+    return res.status(200).json(cached);
+  }
+
+  const shipments = await Shipment.find({ userId: req.user._id });
+
+  const statusCounts = shipments.reduce((acc, s) => {
+    acc[s.status] = (acc[s.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const analytics = {
+    totalShipments: shipments.length,
+    byStatus: statusCounts,
+    avgETA: shipments.reduce((sum, s) => sum + s.eta, 0) / shipments.length || 0,
+  };
+
+  await cache.set(cacheKey, analytics, 300);
+
+  res.status(200).json(analytics);
+});

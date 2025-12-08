@@ -1,48 +1,37 @@
+// D:\Professional_life\personal_projects\Live_supply_tracker\server\routes\taskRoutes.routes.js
 const express = require('express');
 const router = express.Router();
-const Task = require('../models/Task');
+const {
+  getAllTasks,
+  createTask,
+  getTaskById,
+  updateTask,
+  deleteTask,
+  updateTaskStatus,
+} = require('../controllers/task.Controller');
+const { protect, admin } = require('../middleware/auth.middleware');
+const { createTaskRules, updateTaskRules, validate } = require('../middleware/validation.middleware');
+
+// All routes require authentication and admin privileges
+router.use(protect);
+router.use(admin);
 
 // Get all tasks
-router.get('/', async (req, res) => {
-  try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+router.get('/', getAllTasks);
 
-// Add a new task
-router.post('/', async (req, res) => {
-  try {
-    const { title } = req.body;
-    const newTask = new Task({ title });
-    const savedTask = await newTask.save();
-    res.status(201).json(savedTask);
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid task' });
-  }
-});
+// Create a new task
+router.post('/', createTaskRules, validate, createTask);
 
-// Update task status
-router.put('/:id', async (req, res) => {
-  try {
-    const { status } = req.body;
-    const updated = await Task.findByIdAndUpdate(req.params.id, { status }, { new: true });
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: 'Update failed' });
-  }
-});
+// Get a single task by ID
+router.get('/:id', getTaskById);
 
-// Delete task
-router.delete('/:id', async (req, res) => {
-  try {
-    await Task.findByIdAndDelete(req.params.id);
-    res.status(204).send();
-  } catch (err) {
-    res.status(400).json({ error: 'Delete failed' });
-  }
-});
+// Update a task
+router.put('/:id', updateTaskRules, validate, updateTask);
+
+// Update task status only
+router.patch('/:id/status', updateTaskStatus);
+
+// Delete a task
+router.delete('/:id', deleteTask);
 
 module.exports = router;

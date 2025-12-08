@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const logger = require('../utils/logger');
+const logger = require('../utils/logger.utils');
 
 const connectDB = async () => {
   try {
@@ -20,8 +20,8 @@ const connectDB = async () => {
 };
 
 const createIndexes = async () => {
-  const Shipment = require('../models/Shipment');
-  const Route = require('../models/Route');
+  const Shipment = require('../models/Shipment.models');
+  const Route = require('../models/Router.models');
   
   await Shipment.collection.createIndex({ userId: 1, createdAt: -1 });
   await Shipment.collection.createIndex({ routeId: 1 });

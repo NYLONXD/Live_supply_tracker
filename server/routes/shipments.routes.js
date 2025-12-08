@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const Shipment = require('../models/Shipment');
+const Shipment = require('../models/Shipment.models');
 // const { getAnalytics } = require('../controllers/analyticsController');
-const { getAnalytics, getShipmentsPerDay } = require('../controllers/analyticsController');
+const { getAnalytics, getShipmentsPerDay } = require('../controllers/analytics.Controller');
 
 
-// Middleware to simulate authentication and set req.userId
-// In production, replace this with real auth middleware
+
 router.use((req, res, next) => {
   req.userId = req.header('x-user-id') || undefined;
   next();

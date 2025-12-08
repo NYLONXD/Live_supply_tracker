@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Shipment = require('../models/Shipment'); // Make sure this model exists
+const Shipment = require('../models/Shipment.models'); // Make sure this model exists
 
 // Save shipment to DB
 router.post('/api/shipments', async (req, res) => {
