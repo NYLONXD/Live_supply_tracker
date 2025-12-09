@@ -5,7 +5,7 @@ import { getAnalytics } from 'firebase/analytics';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBJlOYMlmbX0EMzlQ2C6vyd3p8OApDDics",
+  apiKey: "VITE_FIREBASE_API_KEY",
   authDomain: "live-supply-tracker.firebaseapp.com",
   projectId: "live-supply-tracker",
   storageBucket: "live-supply-tracker.appspot.com", // ✅ FIXED

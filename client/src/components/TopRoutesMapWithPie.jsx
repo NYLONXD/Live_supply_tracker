@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoibnlsb254ZCIsImEiOiJjbWQ0d2dudDgwZnByMmtzY3VpaWw4MjdmIn0.cqVQbyJdu1AYdIz1-LCTOQ';
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const COLORS = ['#00c9a7', '#845ec2', '#ffc75f', '#f9f871', '#f76c6c', '#29c7ac', '#b76fff'];
 

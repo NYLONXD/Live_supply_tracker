@@ -7,7 +7,7 @@ import Dashboard from './Dashboard';
 import ForgetPassword from './forgetPassword';
 import AdminDashboard from './AdminDashboard';
 
-const ADMIN_EMAIL = 'nylonxd2005@gmail.com'; // <-- Make sure this is lowercase
+const ADMIN_EMAIL = import.meta.env.ADMIN_EMAIL;
 
 export default function AuthWrapper() {
   const [user, setUser] = useState(null);

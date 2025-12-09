@@ -16,7 +16,7 @@ export function ShipmentsProvider({ children }) {
     try {
       const userId = getUserId();
       if (!userId) throw new Error('User not authenticated');
-      const res = await fetch('http://localhost:5000/api/shipments', {
+      const res = await fetch('http://localhost:5000/api/shipments' , {
         headers: { 'x-user-id': userId }
       });
       const data = await res.json();
