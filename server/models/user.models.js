@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   firebaseUid: {
     type: String,
-    required: true,
     unique: true,
+    sparse: true,
     index: true,
   },
   email: {
@@ -14,13 +14,24 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true,
   },
+  password: {
+    type: String,
+    select: false, // Don't return password by default
+  },
   displayName: {
     type: String,
     trim: true,
   },
+  phone: {
+    type: String,
+    trim: true,
+  },
+  avatar: {
+    type: String,
+  },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user', 'driver', 'admin'],
     default: 'user',
   },
   isActive: {
@@ -45,9 +56,17 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Check if user is admin
+// Methods
 userSchema.methods.isAdmin = function() {
-  return this.role === 'admin' || this.email === process.env.ADMIN_EMAIL;
+  return this.role === 'admin';
+};
+
+userSchema.methods.isDriver = function() {
+  return this.role === 'driver';
+};
+
+userSchema.methods.isUser = function() {
+  return this.role === 'user';
 };
 
 module.exports = mongoose.model('User', userSchema);
