@@ -37,6 +37,16 @@ exports.admin = (req, res, next) => {
   }
 };
 
+// Check if user is driver
+exports.driver = (req, res, next) => {
+  if (req.user && req.user.isDriver()) {
+    next();
+  } else {
+    res.status(403).json({ message: 'Not authorized as driver' });
+  }
+};
+
+
 // Generate JWT token
 exports.generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {

@@ -1,5 +1,5 @@
 const shipmentService = require('../services/shipment.service');
-const asyncHandler = require('../utils/asyncHandler.utils');
+const asyncHandler = require('../utils/asyncHandle.utils');
 
 // @desc    Get all shipments
 // @route   GET /api/shipments
@@ -96,7 +96,10 @@ exports.assignDriver = asyncHandler(async (req, res) => {
   io.emit('shipment_assigned', {
     shipmentId: shipment._id,
     trackingNumber: shipment.trackingNumber,
-    driverId: shipment.assignedDriver,
+    driverId:
+      shipment.assignedDriver && shipment.assignedDriver._id
+        ? shipment.assignedDriver._id
+        : shipment.assignedDriver,
   });
   
   res.status(200).json(shipment);

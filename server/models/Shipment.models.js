@@ -7,24 +7,38 @@ const shipmentSchema = new mongoose.Schema({
     index: true,
   },
   
-  // Locations
+  // Locations (UPDATED - more detailed)
+  from: String, // Keep for backward compatibility
+  to: String,
+  
   pickup: {
-    address: { type: String, required: true },
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
+    address: String,
+    lat: Number,
+    lng: Number,
   },
   
   delivery: {
-    address: { type: String, required: true },
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
+    address: String,
+    lat: Number,
+    lng: Number,
   },
   
+  // Legacy fields (your current data)
+  fromLat: Number,
+  fromLng: Number,
+  toLat: Number,
+  lat: Number, // Keep for old records
+  lng: Number,
+  
   // Users
-  createdBy: {
+  userId: { // OLD - for backward compatibility
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+  },
+  
+  createdBy: { // NEW
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     index: true,
   },
   
@@ -37,31 +51,24 @@ const shipmentSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['pending', 'picked_up', 'in_transit', 'delivered', 'cancelled'],
+    enum: ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'cancelled'],
     default: 'pending',
     index: true,
   },
   
-  // AI-generated data
-  estimatedMinutes: {
-    type: Number,
-    required: true,
-  },
+  // ETA (you have this)
+  eta: Number, // Keep for old records
   
-  currentETA: {
-    type: Number, // Updates as driver moves
-  },
-  
-  distance: {
-    type: Number, // km
-    required: true,
-  },
+  // AI-generated data (NEW)
+  estimatedMinutes: Number,
+  currentETA: Number, // Updates as driver moves
+  distance: Number, // km
   
   route: {
     type: [[Number]], // [lng, lat] array for map polyline
   },
   
-  // Live tracking
+  // Live tracking (NEW)
   currentLocation: {
     lat: Number,
     lng: Number,
@@ -69,15 +76,8 @@ const shipmentSchema = new mongoose.Schema({
   },
   
   // Notes
-  notes: {
-    type: String,
-    trim: true,
-  },
-  
-  driverNotes: {
-    type: String,
-    trim: true,
-  },
+  notes: String,
+  driverNotes: String,
   
   // Timestamps
   pickedUpAt: Date,
@@ -88,15 +88,21 @@ const shipmentSchema = new mongoose.Schema({
 });
 
 // Indexes
+shipmentSchema.index({ userId: 1, createdAt: -1 });
 shipmentSchema.index({ createdBy: 1, createdAt: -1 });
 shipmentSchema.index({ assignedDriver: 1, status: 1 });
-shipmentSchema.index({ status: 1, createdAt: -1 });
 
-// Generate tracking number before save
+// Auto-generate tracking number
 shipmentSchema.pre('save', function(next) {
   if (!this.trackingNumber) {
     this.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
   }
+  
+  // Auto-populate createdBy from userId for old records
+  if (!this.createdBy && this.userId) {
+    this.createdBy = this.userId;
+  }
+  
   next();
 });
 

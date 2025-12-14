@@ -1,6 +1,7 @@
 const Shipment = require('../models/Shipment.models');
+const asyncHandler = require('../utils/asyncHandle.utils');
+const logger = require('../utils/logger.utils');
 const aiService = require('../services/aiIntegration.service');
-const asyncHandler = require('../utils/asyncHandler.utils');
 
 // @desc    Get my assigned shipments
 // @route   GET /api/driver/shipments
@@ -29,6 +30,11 @@ exports.getMyShipments = asyncHandler(async (req, res) => {
 exports.updateStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   
+  const validStatuses = ['picked_up', 'in_transit', 'delivered', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+
   const shipment = await Shipment.findOne({
     _id: req.params.id,
     assignedDriver: req.user._id,
@@ -42,13 +48,16 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   
   // Emit socket event
   const io = req.app.get('io');
-  io.emit('status_updated', {
-    shipmentId: shipment._id,
-    trackingNumber: shipment.trackingNumber,
-    status: shipment.status,
-    timestamp: new Date(),
-  });
+  if (io) {
+    io.emit('status_updated', {
+      shipmentId: shipment._id,
+      trackingNumber: shipment.trackingNumber,
+      status: shipment.status,
+      timestamp: new Date(),
+    });
+  }
   
+  logger.info(`Shipment ${shipment.trackingNumber} status updated to ${status} by driver ${req.user.email}`);
   res.status(200).json(shipment);
 });
 
@@ -58,6 +67,10 @@ exports.updateStatus = asyncHandler(async (req, res) => {
 exports.updateLocation = asyncHandler(async (req, res) => {
   const { shipmentId, lat, lng } = req.body;
   
+  if (!shipmentId || lat === undefined || lng === undefined) {
+    return res.status(400).json({ message: 'Shipment ID, latitude, and longitude are required' });
+  }
+
   const shipment = await Shipment.findOne({
     _id: shipmentId,
     assignedDriver: req.user._id,
@@ -73,31 +86,36 @@ exports.updateLocation = asyncHandler(async (req, res) => {
   // Recalculate ETA with AI
   const newETA = await aiService.updateETA(
     { lat, lng },
-    { lat: shipment.delivery.lat, lng: shipment.delivery.lng }
+    { lat: shipment.delivery?.lat || shipment.toLat, lng: shipment.delivery?.lng || shipment.toLng }
   );
   
   await shipment.updateETA(newETA.estimatedMinutes);
   
-  // Emit socket event
+  // Emit socket events
   const io = req.app.get('io');
-  io.emit('location_updated', {
-    shipmentId: shipment._id,
-    trackingNumber: shipment.trackingNumber,
-    location: { lat, lng },
-    timestamp: new Date(),
-  });
+  if (io) {
+    io.to(`shipment_${shipment.trackingNumber}`).emit('location_updated', {
+      shipmentId: shipment._id,
+      trackingNumber: shipment.trackingNumber,
+      location: { lat, lng },
+      timestamp: new Date(),
+    });
+    
+    io.to(`shipment_${shipment.trackingNumber}`).emit('eta_updated', {
+      shipmentId: shipment._id,
+      trackingNumber: shipment.trackingNumber,
+      newETA: newETA.estimatedMinutes,
+      timestamp: new Date(),
+    });
+  }
   
-  io.emit('eta_updated', {
-    shipmentId: shipment._id,
-    trackingNumber: shipment.trackingNumber,
-    newETA: newETA.estimatedMinutes,
-    timestamp: new Date(),
-  });
+  logger.info(`Location updated for shipment ${shipment.trackingNumber}`);
   
   res.status(200).json({
     success: true,
     currentLocation: shipment.currentLocation,
     currentETA: shipment.currentETA,
+    distance: newETA.distance,
   });
 });
 

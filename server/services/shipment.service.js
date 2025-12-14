@@ -7,52 +7,48 @@ class ShipmentService {
   
   // Create new shipment
   async createShipment(data, userId) {
-    const { pickupAddress, deliveryAddress, driverId, notes } = data;
-    
-    // Validate addresses with AI
-    const [pickup, delivery] = await Promise.all([
-      aiService.validateAddress(pickupAddress),
-      aiService.validateAddress(deliveryAddress),
-    ]);
-    
-    if (!pickup.valid || !delivery.valid) {
-      throw new Error('Invalid pickup or delivery address');
-    }
+    const { from, to, fromLat, fromLng, toLat, toLng, notes, vehicleType, weather } = data;
     
     // Calculate ETA with AI
     const etaData = await aiService.calculateETA(
-      { lat: pickup.lat, lng: pickup.lng },
-      { lat: delivery.lat, lng: delivery.lng }
+      { lat: fromLat, lng: fromLng },
+      { lat: toLat, lng: toLng },
+      vehicleType,
+      weather
     );
     
     // Create shipment
     const shipment = await Shipment.create({
+      from,
+      to,
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
       pickup: {
-        address: pickup.formatted,
-        lat: pickup.lat,
-        lng: pickup.lng,
+        address: from,
+        lat: fromLat,
+        lng: fromLng,
       },
       delivery: {
-        address: delivery.formatted,
-        lat: delivery.lat,
-        lng: delivery.lng,
+        address: to,
+        lat: toLat,
+        lng: toLng,
       },
+      userId: userId,
       createdBy: userId,
-      assignedDriver: driverId || null,
       estimatedMinutes: etaData.estimatedMinutes,
       currentETA: etaData.estimatedMinutes,
+      eta: etaData.estimatedMinutes / 60, // hours for backward compatibility
       distance: etaData.distance,
       route: etaData.route,
       notes,
     });
     
-    // Populate driver info
-    await shipment.populate('assignedDriver', 'displayName email phone');
-    
     // Clear cache
     await cache.delPattern('shipments:*');
     
-    logger.info(`Shipment created: ${shipment.trackingNumber}`);
+    logger.info(`Shipment created: ${shipment.trackingNumber} by user ${userId}`);
     
     return shipment;
   }
@@ -63,7 +59,7 @@ class ShipmentService {
     
     // Role-based filtering
     if (role === 'user') {
-      query.createdBy = userId;
+      query.$or = [{ userId: userId }, { createdBy: userId }];
     } else if (role === 'driver') {
       query.assignedDriver = userId;
     }
@@ -99,8 +95,12 @@ class ShipmentService {
     }
     
     // Check permissions
-    if (role === 'user' && shipment.createdBy._id.toString() !== userId.toString()) {
-      throw new Error('Not authorized');
+    if (role === 'user') {
+      const isOwner = shipment.createdBy?._id.toString() === userId.toString() || 
+                      shipment.userId?.toString() === userId.toString();
+      if (!isOwner) {
+        throw new Error('Not authorized');
+      }
     }
     
     if (role === 'driver' && shipment.assignedDriver?._id.toString() !== userId.toString()) {
@@ -115,7 +115,10 @@ class ShipmentService {
     const shipment = await this.getShipmentById(id, userId, role);
     
     // Only admin and original creator can update
-    if (role !== 'admin' && shipment.createdBy._id.toString() !== userId.toString()) {
+    const isOwner = shipment.createdBy?._id.toString() === userId.toString() || 
+                    shipment.userId?.toString() === userId.toString();
+    
+    if (role !== 'admin' && !isOwner) {
       throw new Error('Not authorized to update');
     }
     
@@ -124,6 +127,7 @@ class ShipmentService {
     
     await cache.delPattern('shipments:*');
     
+    logger.info(`Shipment ${shipment.trackingNumber} updated`);
     return shipment;
   }
   
@@ -132,30 +136,18 @@ class ShipmentService {
     const shipment = await this.getShipmentById(id, userId, role);
     
     // Only admin and original creator can delete
-    if (role !== 'admin' && shipment.createdBy._id.toString() !== userId.toString()) {
+    const isOwner = shipment.createdBy?._id.toString() === userId.toString() || 
+                    shipment.userId?.toString() === userId.toString();
+    
+    if (role !== 'admin' && !isOwner) {
       throw new Error('Not authorized to delete');
     }
     
     await shipment.deleteOne();
     await cache.delPattern('shipments:*');
     
+    logger.info(`Shipment ${shipment.trackingNumber} deleted`);
     return { message: 'Shipment deleted' };
-  }
-  
-  // Assign driver
-  async assignDriver(shipmentId, driverId, userId) {
-    const shipment = await Shipment.findById(shipmentId);
-    
-    if (!shipment) {
-      throw new Error('Shipment not found');
-    }
-    
-    shipment.assignedDriver = driverId;
-    await shipment.save();
-    
-    await cache.delPattern('shipments:*');
-    
-    return shipment;
   }
 }
 

@@ -1,5 +1,5 @@
 const Shipment = require('../models/Shipment.models');
-const asyncHandler = require('../utils/asyncHandler.utils');
+const asyncHandler = require('../utils/asyncHandle.utils');
 const { cache } = require('../config/redis.config');
 
 // @desc    Track shipment by tracking number (PUBLIC)
@@ -17,7 +17,7 @@ exports.trackShipment = asyncHandler(async (req, res) => {
   
   const shipment = await Shipment.findOne({ trackingNumber })
     .populate('assignedDriver', 'displayName phone')
-    .select('-notes -driverNotes -createdBy'); // Hide sensitive data
+    .select('-notes -driverNotes -createdBy -userId'); // Hide sensitive data
   
   if (!shipment) {
     return res.status(404).json({ message: 'Shipment not found' });
@@ -26,12 +26,13 @@ exports.trackShipment = asyncHandler(async (req, res) => {
   const trackingData = {
     trackingNumber: shipment.trackingNumber,
     status: shipment.status,
+    from: shipment.from,
+    to: shipment.to,
     pickup: shipment.pickup,
     delivery: shipment.delivery,
     currentLocation: shipment.currentLocation,
     currentETA: shipment.currentETA || shipment.estimatedMinutes,
     distance: shipment.distance,
-    route: shipment.route,
     driver: shipment.assignedDriver ? {
       name: shipment.assignedDriver.displayName,
       phone: shipment.assignedDriver.phone,

@@ -21,11 +21,21 @@ const connectDB = async () => {
 
 const createIndexes = async () => {
   const Shipment = require('../models/Shipment.models');
-  const Route = require('../models/Router.models');
+  const User = require('../models/user.models');
+  const Driver = require('../models/Driver.models');
   
   await Shipment.collection.createIndex({ userId: 1, createdAt: -1 });
-  await Shipment.collection.createIndex({ routeId: 1 });
-  await Route.collection.createIndex({ from: 1, to: 1 }, { unique: true });
+  await Shipment.collection.createIndex({ trackingNumber: 1 }, { unique: true });
+  await Shipment.collection.createIndex({ createdBy:1, createdAt:-1 });
+  await Shipment.collection.createIndex({ assignedDriver:1, status:1 });
+
+  await User.collection.createIndex({ email: 1 }, { unique: true });
+
+
+
+  await Driver.collection.createIndex({ licenseNumber: 1 }, { unique: true });
+  await Driver.collection.createIndex({ email: 1 }, { unique: true });
+  // await Route.collection.createIndex({ from: 1, to: 1 }, { unique: true });
   
   logger.info('Database indexes created');
 };
