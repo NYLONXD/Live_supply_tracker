@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const {
-  addDriver,
+  getAllUsers,
+  promoteToDriver,
+  demoteDriver,
   getAllDrivers,
-  removeDriver,
-  toggleDriverStatus,
   updateDriver,
+  toggleUserStatus,
   assignDriverToShipment,
 } = require('../controllers/admin.Controller');
 const { protect, admin } = require('../middleware/auth.middleware');
@@ -14,12 +15,15 @@ const { protect, admin } = require('../middleware/auth.middleware');
 router.use(protect);
 router.use(admin);
 
+// User management
+router.get('/users', getAllUsers);
+router.post('/users/:id/promote-driver', promoteToDriver);
+router.post('/users/:id/demote-driver', demoteDriver);
+router.patch('/users/:id/toggle', toggleUserStatus);
+
 // Driver management
-router.post('/drivers', addDriver);
 router.get('/drivers', getAllDrivers);
 router.put('/drivers/:id', updateDriver);
-router.delete('/drivers/:id', removeDriver);
-router.patch('/drivers/:id/toggle', toggleDriverStatus);
 
 // Assign driver to shipment
 router.post('/shipments/:id/assign', assignDriverToShipment);

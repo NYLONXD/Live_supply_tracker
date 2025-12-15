@@ -1,5 +1,4 @@
 const User = require('../models/user.models');
-const Driver = require('../models/Driver.models');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
@@ -23,19 +22,9 @@ exports.register = asyncHandler(async (req, res) => {
 
   let role = 'user'; // Default role
 
-  // 1. Check if ADMIN (from .env)
+  // Check if ADMIN (from .env)
   if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
     role = 'admin';
-  } 
-  // 2. Check if DRIVER (from Driver collection)
-  else {
-    const driver = await Driver.findOne({ 
-      email: email.toLowerCase(), 
-      isActive: true 
-    });
-    if (driver) {
-      role = 'driver';
-    }
   }
 
   // Hash password
@@ -92,42 +81,13 @@ exports.login = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Account is deactivated' });
   }
 
-  let role = user.role;
-
-  // Update role dynamically if needed
-  // 1. Check if ADMIN
-  if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-    if (role !== 'admin') {
-      role = 'admin';
-      user.role = 'admin';
-      await user.save();
-    }
-  } 
-  // 2. Check if DRIVER
-  else {
-    const driver = await Driver.findOne({ 
-      email: email.toLowerCase(), 
-      isActive: true 
-    });
-    if (driver && role !== 'driver') {
-      role = 'driver';
-      user.role = 'driver';
-      await user.save();
-    } else if (!driver && role === 'driver') {
-      // Demote back to user if removed from drivers
-      role = 'user';
-      user.role = 'user';
-      await user.save();
-    }
-  }
-
   // Update last login
   user.lastLogin = new Date();
   await user.save();
 
   const token = generateToken(user._id);
 
-  logger.info(`${role} logged in: ${email}`);
+  logger.info(`${user.role} logged in: ${email}`);
 
   res.status(200).json({
     _id: user._id,
@@ -135,6 +95,8 @@ exports.login = asyncHandler(async (req, res) => {
     displayName: user.displayName,
     role: user.role,
     photoURL: user.photoURL,
+    phone: user.phone,
+    vehicleInfo: user.vehicleInfo,
     token,
   });
 });

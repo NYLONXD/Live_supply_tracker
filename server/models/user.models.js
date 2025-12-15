@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    select: false, // Don't return password by default
+    select: false,
   },
   displayName: {
     type: String,
@@ -33,6 +33,24 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'driver', 'admin'],
     default: 'user',
   },
+  
+  // Driver-specific fields (only used when role = 'driver')
+  vehicleInfo: {
+    type: String,
+    trim: true,
+  },
+  vehicleNumber: {
+    type: String,
+    trim: true,
+  },
+  promotedToDriverBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Admin who promoted this user to driver
+  },
+  promotedToDriverAt: {
+    type: Date,
+  },
+  
   isActive: {
     type: Boolean,
     default: true,
