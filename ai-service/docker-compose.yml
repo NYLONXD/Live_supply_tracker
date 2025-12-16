@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # AI Service only - uses external Redis Cloud
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supply-tracker-ai
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Use Redis Cloud
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CACHE_ENABLED=true
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./model:/app/model
+      - ./logs:/app/logs
+    # NO Redis service - we use cloud!
+
+# No volumes needed for Redis

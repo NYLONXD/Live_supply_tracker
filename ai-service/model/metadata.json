@@ -1,0 +1,57 @@
+{
+  "trained_at": "2025-12-16T17:21:58.190980",
+  "data_size": 5000,
+  "features": [
+    "distance",
+    "base_speed",
+    "traffic_factor",
+    "vehicle_enc",
+    "weather_enc",
+    "route_enc",
+    "hour",
+    "day_of_week",
+    "speed_distance_ratio",
+    "traffic_speed_interaction",
+    "is_rush_hour",
+    "is_weekend"
+  ],
+  "models": {
+    "xgboost": {
+      "mae": 0.06239091126516906,
+      "rmse": 0.15071542875969385,
+      "r2": 0.9426928116256964,
+      "residual_std": 0.1504234573878886,
+      "mae_minutes": 3.7434546759101437,
+      "rmse_minutes": 9.04292572558163
+    },
+    "lightgbm": {
+      "mae": 0.05985204463839439,
+      "rmse": 0.13982926911475924,
+      "r2": 0.9506724154186297,
+      "residual_std": 0.1397772090682177,
+      "mae_minutes": 3.5911226783036634,
+      "rmse_minutes": 8.389756146885555
+    },
+    "neural": {
+      "mae": 0.0985973712687013,
+      "rmse": 0.1515281773350841,
+      "r2": 0.9420730752131103,
+      "residual_std": 0.14905952024297212,
+      "mae_minutes": 5.915842276122078,
+      "rmse_minutes": 9.091690640105046
+    },
+    "ensemble": {
+      "mae": 0.06097548566949863,
+      "rmse": 0.13056784775502886,
+      "r2": 0.9569903245418165,
+      "residual_std": 0.13055977762332915,
+      "mae_minutes": 3.658529140169918,
+      "rmse_minutes": 7.834070865301731
+    }
+  },
+  "ensemble_weights": {
+    "xgboost": 0.3738032997158612,
+    "lightgbm": 0.3896596790318997,
+    "neural": 0.2365370212522389
+  }
+}
