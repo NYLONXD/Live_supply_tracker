@@ -83,7 +83,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"],  # Allow all origins for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -140,15 +140,13 @@ async def root():
         "endpoints": {
             "health": "/health",
             "docs": "/docs",
-            "api": settings.API_V1_PREFIX,
+            "predict": "/predict",
+            "predict_batch": "/predict/batch",
             "models": "/models/info"
         },
         "features": {
             "eta_prediction": True,
             "batch_prediction": True,
-            "geocoding": settings.MAPBOX_TOKEN != "",
-            "route_optimization": True,
-            "traffic_analysis": settings.ENABLE_TRAFFIC_INTEGRATION,
             "neural_network": settings.ENABLE_NEURAL_NETWORK,
             "ensemble": settings.ENABLE_ENSEMBLE
         }
@@ -197,7 +195,7 @@ async def get_model_info():
     
     return model_manager.get_model_info()
 
-# Single prediction
+# ✅ MAIN PREDICTION ENDPOINT - This is what your backend calls
 @app.post("/predict", response_model=ETAPredictionResponse)
 async def predict_eta(request: ETAPredictionRequest):
     """
@@ -205,6 +203,8 @@ async def predict_eta(request: ETAPredictionRequest):
     
     Uses ensemble of XGBoost, LightGBM, and Neural Network for best accuracy
     """
+    logger.info(f"📨 Received prediction request: distance={request.distance}km, vehicle={request.vehicle}")
+    
     if not model_manager:
         raise HTTPException(status_code=503, detail="Models not loaded")
     
@@ -215,11 +215,13 @@ async def predict_eta(request: ETAPredictionRequest):
             cache_key = f"predict:{request.model_dump_json()}"
             cached = await cache.get(cache_key)
             if cached:
-                logger.debug("Cache hit for prediction")
+                logger.debug("✅ Cache hit for prediction")
                 return ETAPredictionResponse(**cached)
         
         # Make prediction
         result = await model_manager.predict(request)
+        
+        logger.info(f"✅ Prediction successful: {result.estimated_eta_minutes:.1f} min ({result.confidence} confidence)")
         
         # Cache result
         if settings.CACHE_ENABLED:
@@ -228,7 +230,7 @@ async def predict_eta(request: ETAPredictionRequest):
         return result
         
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
+        logger.error(f"❌ Prediction error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 # Batch prediction
@@ -306,12 +308,10 @@ if settings.ENABLE_METRICS:
         from app.utils.metrics import get_metrics
         return get_metrics()
 
-# Include API v1 routes
-from app.api.v1.routes import router as api_v1_router
-app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
-
 if __name__ == "__main__":
     import uvicorn
+    
+    logger.info(f"🚀 Starting AI Service on {settings.HOST}:{settings.PORT}")
     
     uvicorn.run(
         "app.main:app",
