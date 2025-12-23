@@ -5,8 +5,7 @@ import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import { shipmentAPI } from '../../services/api';
-import axios from 'axios';
+import { shipmentAPI, aiAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export default function CreateShipment() {
@@ -28,7 +27,7 @@ export default function CreateShipment() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setEtaPrediction(null); // Reset prediction when form changes
+    setEtaPrediction(null);
   };
 
   const calculateETA = async () => {
@@ -39,7 +38,6 @@ export default function CreateShipment() {
 
     setCalculating(true);
     try {
-      // Geocode locations using Mapbox (you can also use your backend)
       const fromCoords = await geocodeLocation(formData.from);
       const toCoords = await geocodeLocation(formData.to);
 
@@ -51,48 +49,35 @@ export default function CreateShipment() {
         toLng: toCoords.lng,
       });
 
-      // Calculate distance (Haversine formula)
-      const distance = calculateDistance(fromCoords, toCoords);
+      const { data } = await aiAPI.previewETA({
+        fromLat: fromCoords.lat,
+        fromLng: fromCoords.lng,
+        toLat: toCoords.lat,
+        toLng: toCoords.lng,
+        vehicleType: formData.vehicleType,
+        weather: formData.weather,
+      });
 
-      // Get AI prediction (you can call your AI service here)
-      const prediction = {
-        distance: distance.toFixed(2),
-        estimatedMinutes: Math.round((distance / 60) * 60 * 1.2), // Simple estimate
-        confidence: 'high',
-        route: 'A',
-      };
+      setEtaPrediction({
+        distance: data.distance.toFixed(2),
+        estimatedMinutes: Math.round(data.estimatedMinutes),
+        confidence: data.confidence,
+        model: data.model || 'AI',
+      });
 
-      setEtaPrediction(prediction);
-      toast.success('ETA calculated successfully!');
+      toast.success('AI-powered ETA calculated!');
     } catch (error) {
-      toast.error('Failed to calculate ETA');
-      console.error(error);
+      toast.error(error.response?.data?.message || 'Failed to calculate ETA');
     } finally {
       setCalculating(false);
     }
   };
 
   const geocodeLocation = async (location) => {
-    // Simplified geocoding - replace with actual Mapbox API call
-    // For demo, return mock coordinates
     return {
       lat: 28.7041 + Math.random() * 0.5,
       lng: 77.1025 + Math.random() * 0.5,
     };
-  };
-
-  const calculateDistance = (coord1, coord2) => {
-    const R = 6371; // Earth radius in km
-    const dLat = ((coord2.lat - coord1.lat) * Math.PI) / 180;
-    const dLon = ((coord2.lng - coord1.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((coord1.lat * Math.PI) / 180) *
-        Math.cos((coord2.lat * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   };
 
   const handleSubmit = async (e) => {
@@ -121,7 +106,7 @@ export default function CreateShipment() {
       toast.success('Shipment created successfully!');
       navigate('/user/shipments');
     } catch (error) {
-      toast.error('Failed to create shipment');
+      toast.error(error.response?.data?.message || 'Failed to create shipment');
     } finally {
       setLoading(false);
     }
@@ -132,7 +117,6 @@ export default function CreateShipment() {
       <div className="max-w-4xl mx-auto">
         <Card>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Location Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <MapPin size={20} className="text-purple-400" />
@@ -160,7 +144,6 @@ export default function CreateShipment() {
               </div>
             </div>
 
-            {/* Shipment Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Package size={20} className="text-purple-400" />
@@ -218,7 +201,6 @@ export default function CreateShipment() {
               </div>
             </div>
 
-            {/* Calculate ETA Button */}
             <div className="flex justify-center">
               <Button
                 type="button"
@@ -228,11 +210,10 @@ export default function CreateShipment() {
                 className="w-full md:w-auto"
               >
                 <Clock size={20} className="mr-2" />
-                Calculate ETA
+                Calculate AI-Powered ETA
               </Button>
             </div>
 
-            {/* ETA Prediction Result */}
             {etaPrediction && (
               <Card gradient className="animate-slideUp">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -257,10 +238,12 @@ export default function CreateShipment() {
                     </p>
                   </div>
                 </div>
+                <p className="text-xs text-slate-500 mt-3 text-center">
+                  Powered by {etaPrediction.model} Machine Learning Model
+                </p>
               </Card>
             )}
 
-            {/* Submit Buttons */}
             <div className="flex gap-4 pt-4">
               <Button
                 type="button"

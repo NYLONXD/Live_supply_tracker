@@ -91,4 +91,9 @@ export const tasksAPI = {
   updateStatus: (id, status) => api.patch(`/api/tasks/${id}/status`, { status }),
 };
 
+// AI APIs
+export const aiAPI = {
+  previewETA: (data) => api.post('/api/ai/preview-eta', data),
+};
+
 export default api;
