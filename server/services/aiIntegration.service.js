@@ -1,8 +1,8 @@
-// server/services/aiIntegration.service.js - FIXED VERSION
+// server/services/aiIntegration.service.js - COMPLETE FIXED VERSION
 const axios = require('axios');
 const logger = require('../utils/logger.utils');
 
-// IMPORTANT: AI service runs on port 8000 with endpoint /predict (NOT /api/ai/predict)
+// AI service runs on port 8000
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 class AIIntegrationService {
@@ -26,8 +26,9 @@ class AIIntegrationService {
       const dayOfWeek = now.getDay();
       
       logger.info(`🤖 Calling AI service at ${AI_SERVICE_URL}/predict`);
+      logger.info(`📊 Request params: distance=${distance.toFixed(2)}km, vehicle=${vehicleType}, weather=${weather}`);
       
-      // ✅ FIXED: Call correct endpoint /predict (not /api/ai/predict)
+      // ✅ Call /predict endpoint (FastAPI doesn't use /api prefix)
       const response = await axios.post(`${AI_SERVICE_URL}/predict`, {
         distance: distance,
         base_speed: baseSpeed,
@@ -44,7 +45,7 @@ class AIIntegrationService {
         }
       });
       
-      logger.info(`✅ AI ETA: ${response.data.estimated_eta_minutes} min (${response.data.confidence} confidence)`);
+      logger.info(`✅ AI Response: ETA=${response.data.estimated_eta_minutes}min, confidence=${response.data.confidence}, model=${response.data.model_used}`);
       
       return {
         estimatedMinutes: response.data.estimated_eta_minutes,
@@ -59,19 +60,24 @@ class AIIntegrationService {
     } catch (error) {
       logger.error(`❌ AI ETA calculation failed: ${error.message}`);
       
-      // ✅ Enhanced error logging
+      // Enhanced error logging
       if (error.response) {
-        logger.error(`Status: ${error.response.status}`);
-        logger.error(`Data: ${JSON.stringify(error.response.data)}`);
+        logger.error(`Response Status: ${error.response.status}`);
+        logger.error(`Response Data: ${JSON.stringify(error.response.data)}`);
       } else if (error.request) {
-        logger.error('No response from AI service - is it running on port 8000?');
+        logger.error('❌ No response from AI service');
+        logger.error(`   - Is the AI service running on port 8000?`);
+        logger.error(`   - Check: curl http://localhost:8000/health`);
+      } else {
+        logger.error(`Request Error: ${error.message}`);
       }
       
       // Fallback to simple calculation
       const distance = this.calculateDistance(pickupCoords, deliveryCoords);
-      const estimatedMinutes = (distance / 40) * 60 * 1.2; // Add 20% buffer
+      const baseSpeed = this.getBaseSpeed(options.vehicleType || 'Car');
+      const estimatedMinutes = (distance / baseSpeed) * 60 * 1.2; // Add 20% buffer
       
-      logger.info(`📊 Using fallback ETA: ${Math.ceil(estimatedMinutes)} min`);
+      logger.info(`📊 Using fallback ETA calculation: ${Math.ceil(estimatedMinutes)} min`);
       
       return {
         estimatedMinutes: Math.ceil(estimatedMinutes),
@@ -79,7 +85,42 @@ class AIIntegrationService {
         distance: distance,
         confidence: 'low',
         model: 'fallback',
-        fallback: true
+        fallback: true,
+        error: 'AI service unavailable'
+      };
+    }
+  }
+  
+  async updateETA(currentLocation, destinationLocation) {
+    try {
+      // Calculate remaining distance
+      const distance = this.calculateDistance(currentLocation, destinationLocation);
+      const baseSpeed = 50; // Default average speed
+      
+      const response = await axios.post(`${AI_SERVICE_URL}/predict`, {
+        distance: distance,
+        base_speed: baseSpeed,
+        traffic_factor: 1.0,
+        vehicle: 'Car',
+        weather: 'Clear',
+        route: 'A',
+        time_of_day: new Date().getHours(),
+        day_of_week: new Date().getDay()
+      }, { timeout: 5000 });
+      
+      return {
+        estimatedMinutes: response.data.estimated_eta_minutes,
+        distance: distance
+      };
+      
+    } catch (error) {
+      // Fallback calculation
+      const distance = this.calculateDistance(currentLocation, destinationLocation);
+      const estimatedMinutes = (distance / 50) * 60 * 1.2;
+      
+      return {
+        estimatedMinutes: Math.ceil(estimatedMinutes),
+        distance: distance
       };
     }
   }
@@ -111,15 +152,16 @@ class AIIntegrationService {
     return deg * (Math.PI/180);
   }
   
-  // ✅ NEW: Health check method
+  // Health check
   async checkHealth() {
     try {
       const response = await axios.get(`${AI_SERVICE_URL}/health`, {
         timeout: 5000
       });
+      logger.info(`✅ AI Service Health: ${response.data.status}`);
       return response.data;
     } catch (error) {
-      logger.error(`AI service health check failed: ${error.message}`);
+      logger.error(`❌ AI service health check failed: ${error.message}`);
       return null;
     }
   }
