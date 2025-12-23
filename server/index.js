@@ -20,6 +20,7 @@ const taskRoutes = require('./routes/taskRoutes.routes');
 const adminRoutes = require('./routes/admin.routes');
 const driverRoutes = require('./routes/driver.routes');
 const trackingRoutes = require('./routes/tracking.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -78,6 +79,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/track', trackingRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Socket.IO Events
 io.on('connection', (socket) => {
