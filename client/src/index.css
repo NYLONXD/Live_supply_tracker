@@ -1,150 +1,47 @@
-/* client/src/index.css - COMPLETE VERSION */
 @import "tailwindcss";
 
-/* Custom Animations */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@layer base {
+  body {
+    @apply bg-brand-zinc-50 text-brand-black antialiased;
   }
 }
 
+/* --- Professional Animations --- */
+
+/* Base Fade In (Hero) */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.4;
-  }
+/* Staggered Reveal for lists/grids */
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
+.animate-modern-fade {
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-slideUp {
-  animation: slideUp 0.4s ease-out;
-}
+/* Add this class to elements you want to animate when they enter viewport 
+   (Note: Requires IntersectionObserver in React, or simple CSS delays for static elements) 
+*/
+.animate-delay-100 { animation-delay: 100ms; }
+.animate-delay-200 { animation-delay: 200ms; }
+.animate-delay-300 { animation-delay: 300ms; }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s linear infinite;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  background-size: 1000px 100%;
-}
-
-/* Scrollbar Styling */
+/* Minimalist Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-brand-zinc-300 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-brand-zinc-500; }
 
-::-webkit-scrollbar-track {
-  background: #1e293b;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
-}
-
-/* Smooth transitions */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Focus visible styles */
+/* Focus States */
 *:focus-visible {
-  outline: 2px solid #8b5cf6;
+  outline: 2px solid #000000;
   outline-offset: 2px;
-}
-
-/* Mapbox GL styles override */
-.mapboxgl-popup-content {
-  background: #1e293b !important;
-  color: #f1f5f9 !important;
-  border: 1px solid #475569 !important;
-  border-radius: 8px !important;
-  padding: 12px !important;
-}
-
-.mapboxgl-popup-close-button {
-  color: #f1f5f9 !important;
-  font-size: 20px !important;
-}
-
-.mapboxgl-popup-close-button:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.mapboxgl-ctrl button {
-  background-color: #1e293b !important;
-  border: 1px solid #475569 !important;
-}
-
-.mapboxgl-ctrl button:hover {
-  background-color: #334155 !important;
-}
-
-/* Custom utility classes */
-.gradient-purple {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
-}
-
-.glass-effect {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Loading spinner */
-.spinner {
-  border: 4px solid rgba(139, 92, 246, 0.1);
-  border-left-color: #8b5cf6;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }

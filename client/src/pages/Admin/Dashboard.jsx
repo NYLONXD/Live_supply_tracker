@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Users, Truck, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { Package, Users, Truck, Activity, ArrowUpRight } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
-import Button from '../../components/common/Button';
 import { analyticsAPI, shipmentAPI, adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    totalShipments: 0,
-    averageETA: 0,
-    topRoute: 'N/A',
-  });
+  const [stats, setStats] = useState({ totalShipments: 0, averageETA: 0 });
   const [recentShipments, setRecentShipments] = useState([]);
   const [userStats, setUserStats] = useState({ total: 0, drivers: 0 });
   const [loading, setLoading] = useState(true);
@@ -28,13 +23,9 @@ export default function AdminDashboard() {
         adminAPI.getAllUsers(),
         adminAPI.getAllDrivers(),
       ]);
-
       setStats(analyticsRes.data);
-      setRecentShipments(shipmentsRes.data.slice(0, 10));
-      setUserStats({
-        total: usersRes.data.length,
-        drivers: driversRes.data.length,
-      });
+      setRecentShipments(shipmentsRes.data.slice(0, 8));
+      setUserStats({ total: usersRes.data.length, drivers: driversRes.data.length });
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -42,179 +33,111 @@ export default function AdminDashboard() {
     }
   };
 
-  const statCards = [
-    {
-      icon: Package,
-      label: 'Total Shipments',
-      value: stats.totalShipments,
-      color: 'purple',
-      link: '/admin/shipments',
-    },
-    {
-      icon: Users,
-      label: 'Total Users',
-      value: userStats.total,
-      color: 'blue',
-      link: '/admin/users',
-    },
-    {
-      icon: Truck,
-      label: 'Active Drivers',
-      value: userStats.drivers,
-      color: 'green',
-      link: '/admin/drivers',
-    },
-    {
-      icon: Clock,
-      label: 'Avg ETA',
-      value: `${stats.averageETA.toFixed(1)}h`,
-      color: 'yellow',
-      link: '/admin/analytics',
-    },
-  ];
-
-  const getStatusBadge = (status) => {
-    const config = {
-      pending: { bg: 'bg-yellow-500/10', text: 'text-yellow-400' },
-      assigned: { bg: 'bg-blue-500/10', text: 'text-blue-400' },
-      picked_up: { bg: 'bg-cyan-500/10', text: 'text-cyan-400' },
-      in_transit: { bg: 'bg-purple-500/10', text: 'text-purple-400' },
-      delivered: { bg: 'bg-green-500/10', text: 'text-green-400' },
-      cancelled: { bg: 'bg-red-500/10', text: 'text-red-400' },
-    };
-
-    const style = config[status] || config.pending;
-    return (
-      <span className={`px-2 py-1 rounded text-xs font-medium ${style.bg} ${style.text}`}>
-        {status.replace('_', ' ').toUpperCase()}
-      </span>
-    );
-  };
-
-  if (loading) {
-    return (
-      <DashboardLayout title="Admin Dashboard">
-        <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+  if (loading) return <DashboardLayout><div className="p-8 text-center text-zinc-500">Loading admin panel...</div></DashboardLayout>;
 
   return (
-    <DashboardLayout title="Admin Dashboard">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat) => (
-          <Link key={stat.label} to={stat.link}>
-            <Card hover gradient className="cursor-pointer relative overflow-hidden">
-              <div className={`absolute inset-0 bg-${stat.color}-500/10 opacity-50`} />
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 bg-${stat.color}-500/20 rounded-xl`}>
-                    <stat.icon className={`text-${stat.color}-400`} size={24} />
-                  </div>
-                </div>
-                <p className="text-slate-400 text-sm mb-1">{stat.label}</p>
-                <p className="text-3xl font-bold text-white">{stat.value}</p>
-              </div>
-            </Card>
-          </Link>
-        ))}
+    <DashboardLayout title="Command Center">
+      {/* High-Level Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <MetricCard label="Total Shipments" value={stats.totalShipments} icon={Package} trend="+12%" />
+        <MetricCard label="System Users" value={userStats.total} icon={Users} />
+        <MetricCard label="Active Drivers" value={userStats.drivers} icon={Truck} active />
+        <MetricCard label="Avg Response" value={`${stats.averageETA.toFixed(1)}h`} icon={Activity} />
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card gradient>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-500/20 rounded-xl">
-              <CheckCircle className="text-green-400" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Delivered Today</p>
-              <p className="text-2xl font-bold text-white">
-                {recentShipments.filter(s => s.status === 'delivered').length}
-              </p>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Feed */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold tracking-tight">Live Operations</h2>
+            <Link to="/admin/shipments" className="text-xs font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity">
+              FULL MANIFEST
+            </Link>
           </div>
-        </Card>
 
-        <Card gradient>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-500/20 rounded-xl">
-              <TrendingUp className="text-purple-400" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">In Transit</p>
-              <p className="text-2xl font-bold text-white">
-                {recentShipments.filter(s => s.status === 'in_transit').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card gradient>
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-yellow-500/20 rounded-xl">
-              <AlertCircle className="text-yellow-400" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-slate-400">Pending Assignment</p>
-              <p className="text-2xl font-bold text-white">
-                {recentShipments.filter(s => s.status === 'pending').length}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Recent Shipments */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Shipments</h2>
-          <Link to="/admin/shipments">
-            <Button variant="ghost" size="sm">View All</Button>
-          </Link>
-        </div>
-
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="bg-white border border-zinc-200">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Tracking #</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Route</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Status</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">Driver</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium text-sm">ETA</th>
+                <tr className="border-b border-zinc-200 bg-zinc-50 text-left">
+                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">ID</th>
+                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Route</th>
+                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Driver</th>
+                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody>
-                {recentShipments.map((shipment) => (
-                  <tr
-                    key={shipment._id}
-                    className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors"
-                  >
-                    <td className="py-3 px-4 font-mono text-sm text-purple-400">
-                      {shipment.trackingNumber}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-300">
-                      {shipment.from} → {shipment.to}
-                    </td>
-                    <td className="py-3 px-4">{getStatusBadge(shipment.status)}</td>
-                    <td className="py-3 px-4 text-sm text-slate-400">
-                      {shipment.assignedDriver?.displayName || 'Unassigned'}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-slate-400">
-                      {shipment.currentETA ? `${Math.round(shipment.currentETA)} min` : 'N/A'}
+              <tbody className="divide-y divide-zinc-100">
+                {recentShipments.map((s) => (
+                  <tr key={s._id} className="hover:bg-zinc-50/80">
+                    <td className="py-3 px-4 font-mono text-xs">{s.trackingNumber.slice(-8)}</td>
+                    <td className="py-3 px-4 text-xs font-medium">{s.from.split(',')[0]} → {s.to.split(',')[0]}</td>
+                    <td className="py-3 px-4 text-xs text-zinc-500">{s.assignedDriver?.displayName || '—'}</td>
+                    <td className="py-3 px-4">
+                      <span className={`w-2 h-2 rounded-full inline-block mr-2 ${
+                        s.status === 'in_transit' ? 'bg-green-500 animate-pulse' : 
+                        s.status === 'pending' ? 'bg-yellow-500' : 'bg-zinc-300'
+                      }`}></span>
+                      <span className="text-xs uppercase font-bold tracking-wide">{s.status.replace('_', ' ')}</span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
+
+        {/* Side Panel / System Status */}
+        <div className="space-y-6">
+           <div className="bg-black text-white p-6 border border-zinc-800">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">System Health</h3>
+              <div className="space-y-4">
+                 <div className="flex justify-between items-center">
+                    <span className="text-sm">API Latency</span>
+                    <span className="font-mono text-green-400">45ms</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-sm">AI Prediction</span>
+                    <span className="font-mono text-green-400">Online</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-sm">Active Nodes</span>
+                    <span className="font-mono text-white">4/4</span>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="border border-zinc-200 bg-white p-6">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Quick Links</h3>
+              <div className="grid grid-cols-2 gap-2">
+                 <QuickLink to="/admin/users" label="Users" />
+                 <QuickLink to="/admin/drivers" label="Fleet" />
+                 <QuickLink to="/admin/analytics" label="Reports" />
+                 <QuickLink to="/settings" label="Config" />
+              </div>
+           </div>
+        </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function MetricCard({ label, value, icon: Icon, trend, active }) {
+  return (
+    <div className={`p-6 border ${active ? 'bg-black text-white border-black' : 'bg-white border-zinc-200'}`}>
+      <div className="flex justify-between items-start mb-4">
+        <Icon size={20} className={active ? 'text-zinc-400' : 'text-zinc-400'} />
+        {trend && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-sm">{trend}</span>}
+      </div>
+      <div className="text-3xl font-bold tracking-tighter mb-1">{value}</div>
+      <div className={`text-xs font-bold uppercase tracking-wider ${active ? 'text-zinc-500' : 'text-zinc-400'}`}>{label}</div>
+    </div>
+  );
+}
+
+function QuickLink({ to, label }) {
+  return (
+    <Link to={to} className="flex items-center justify-between p-3 border border-zinc-100 hover:border-black hover:bg-zinc-50 transition-all group">
+      <span className="text-xs font-bold">{label}</span>
+      <ArrowUpRight size={14} className="text-zinc-300 group-hover:text-black" />
+    </Link>
   );
 }

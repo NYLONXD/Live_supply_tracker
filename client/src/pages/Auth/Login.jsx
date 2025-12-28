@@ -1,128 +1,117 @@
-// client/src/pages/Auth/Login.jsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Truck } from 'lucide-react';
+import { Mail, Lock, Truck, ArrowRight, AlertCircle } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import Card from '../../components/common/Card';
 import useAuthStore from '../../stores/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, loading } = useAuthStore();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       const user = await login(formData);
-      
       // Redirect based on role
       switch (user.role) {
-        case 'admin':
-          navigate('/admin/dashboard');
-          break;
-        case 'driver':
-          navigate('/driver/dashboard');
-          break;
-        default:
-          navigate('/user/dashboard');
+        case 'admin': navigate('/admin/dashboard'); break;
+        case 'driver': navigate('/driver/dashboard'); break;
+        default: navigate('/user/dashboard');
       }
-    } catch (error) {
-      // Error handled by interceptor
+    } catch (err) {
+      setError('Invalid email or password. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4  from-slate-950 via-purple-950 to-slate-950">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
+      
+      {/* Premium Card Container */}
+      <div className="w-full max-w-md bg-white border border-zinc-200 shadow-2xl shadow-zinc-200/50 p-8 md:p-10 relative overflow-hidden">
+        
+        {/* Decorative Top Line */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-black" />
 
-      <Card className="w-full max-w-md relative z-10 animate-slideUp">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600 rounded-2xl mb-4">
-            <Truck size={32} className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-slate-400">Sign in to your Supply Tracker account</p>
+        <div className="text-center mb-10">
+          <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
+            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white group-hover:bg-zinc-800 transition-colors">
+              <Truck size={16} />
+            </div>
+            <span className="font-bold tracking-tight text-lg">SUPPLY TRACKER</span>
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight text-black mb-2">Welcome Back</h1>
+          <p className="text-zinc-500 text-sm">Enter your credentials to access the workspace.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 flex items-start gap-3">
+            <AlertCircle size={18} className="text-red-600 mt-0.5" />
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="Email"
+            label="Work Email"
             type="email"
-            name="email"
             icon={Mail}
-            placeholder="you@example.com"
+            placeholder="name@company.com"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
+            className="h-11"
           />
 
-          <Input
-            label="Password"
-            type="password"
-            name="password"
-            icon={Lock}
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            required
-          />
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-purple-600 focus:ring-purple-500"
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <Input
+                label="Password"
+                type="password"
+                icon={Lock}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                className="h-11"
+                containerClassName="w-full"
               />
-              Remember me
-            </label>
-            <Link
-              to="/forgot-password"
-              className="text-purple-400 hover:text-purple-300 transition-colors"
-            >
-              Forgot password?
-            </Link>
+            </div>
+            <div className="flex justify-end mt-1">
+              <Link to="/forgot-password" className="text-xs font-medium text-zinc-500 hover:text-black transition-colors">
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            loading={loading}
-          >
-            Sign In
+          <Button type="submit" className="w-full h-11 text-sm shadow-lg shadow-black/5" loading={loading}>
+            Sign In <ArrowRight size={16} className="ml-2" />
           </Button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-slate-400 text-sm">
-            Don't have an account?{' '}
-            <Link
-              to="/signup"
-              className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
-            >
-              Sign up
+        {/* Demo Credentials Section (Styled for Dev/Demo) */}
+        <div className="mt-8 pt-6 border-t border-zinc-100">
+          <div className="text-center">
+            <p className="text-zinc-500 text-xs mb-3">Don't have an account?</p>
+            <Link to="/signup">
+              <Button variant="outline" className="w-full h-10 text-xs">Create Account</Button>
             </Link>
-          </p>
+          </div>
+          
+         
         </div>
 
-        {/* Demo Credentials */}
-        <div className="mt-6 pt-6 border-t border-slate-700">
-          <p className="text-xs text-slate-500 text-center mb-2">Demo Credentials:</p>
-          <div className="text-xs text-slate-400 space-y-1">
-            <p>👤 User: user@demo.com / password</p>
-            <p>🚚 Driver: driver@demo.com / password</p>
-            <p>⚙️ Admin: admin@demo.com / password</p>
-          </div>
-        </div>
-      </Card>
+      </div>
+      
+      {/* Footer Text */}
+      <div className="absolute bottom-6 text-center">
+        <p className="text-zinc-400 text-xs">
+          © 2025 Supply Tracker Systems. <br className="hidden sm:block" /> Secure Encrypted Connection.
+        </p>
+      </div>
     </div>
   );
 }
