@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-black: #000000;
+  --color-brand-white: #FFFFFF;
+  --color-brand-zinc-50: #FAFAFA;
+  --color-brand-zinc-100: #F4F4F5;
+  --color-brand-zinc-200: #E4E7EB;
+  --color-brand-zinc-300: #D4D4D8;
+  --color-brand-zinc-400: #A1A1AA;
+  --color-brand-zinc-500: #71717A;
+  --color-brand-zinc-600: #52525B;
+  --color-brand-zinc-700: #3F3F46;
+  --color-brand-zinc-800: #27272A;
+  --color-brand-zinc-900: #18181B;
+
+  --font-family-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
 @layer base {
   body {
     @apply bg-brand-zinc-50 text-brand-black antialiased;
@@ -24,9 +47,6 @@
   animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Add this class to elements you want to animate when they enter viewport 
-   (Note: Requires IntersectionObserver in React, or simple CSS delays for static elements) 
-*/
 .animate-delay-100 { animation-delay: 100ms; }
 .animate-delay-200 { animation-delay: 200ms; }
 .animate-delay-300 { animation-delay: 300ms; }
