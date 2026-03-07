@@ -12,8 +12,8 @@ import logging
 from datetime import datetime
 
 # Internal imports
-from app.config import settings
-from app.models.schemas import (
+from config import settings
+from models.schemas import (
     ETAPredictionRequest,
     ETAPredictionResponse,
     BatchPredictionRequest,

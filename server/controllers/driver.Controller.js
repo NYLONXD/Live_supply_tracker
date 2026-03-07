@@ -1,97 +1,72 @@
+// server/controllers/driver.Controller.js
 const Shipment = require('../models/Shipment.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const logger = require('../utils/logger.utils');
 const aiService = require('../services/aiIntegration.service');
 
-// @desc    Get my assigned shipments
-// @route   GET /api/driver/shipments
-// @access  Private (Driver only)
+// GET /api/driver/shipments
 exports.getMyShipments = asyncHandler(async (req, res) => {
-  const { status } = req.query;
-  
-  const query = {
-    assignedDriver: req.user._id,
-  };
-  
-  if (status) {
-    query.status = status;
-  }
-  
+  const query = { assignedDriver: req.user._id };
+  if (req.query.status) query.status = req.query.status;
+
   const shipments = await Shipment.find(query)
     .populate('createdBy', 'displayName email phone')
     .sort({ createdAt: -1 });
-  
+
   res.status(200).json(shipments);
 });
 
-// @desc    Update shipment status
-// @route   PUT /api/driver/shipments/:id/status
-// @access  Private (Driver only)
+// PUT /api/driver/shipments/:id/status
 exports.updateStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  
   const validStatuses = ['picked_up', 'in_transit', 'delivered', 'cancelled'];
+
   if (!validStatuses.includes(status)) {
     return res.status(400).json({ message: 'Invalid status' });
   }
 
-  const shipment = await Shipment.findOne({
-    _id: req.params.id,
-    assignedDriver: req.user._id,
-  });
-  
-  if (!shipment) {
-    return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
-  }
-  
+  const shipment = await Shipment.findOne({ _id: req.params.id, assignedDriver: req.user._id });
+  if (!shipment) return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
+
   await shipment.updateStatus(status);
-  
-  // Emit socket event
+
   const io = req.app.get('io');
   if (io) {
-    io.emit('status_updated', {
+    io.to(`shipment_${shipment.trackingNumber}`).emit('status_updated', {
       shipmentId: shipment._id,
       trackingNumber: shipment.trackingNumber,
       status: shipment.status,
       timestamp: new Date(),
     });
   }
-  
-  logger.info(`Shipment ${shipment.trackingNumber} status updated to ${status} by driver ${req.user.email}`);
+
+  logger.info(`Shipment ${shipment.trackingNumber} → ${status} by driver ${req.user.email}`);
   res.status(200).json(shipment);
 });
 
-// @desc    Update location
-// @route   POST /api/driver/location
-// @access  Private (Driver only)
+// POST /api/driver/location  — single authoritative path for location updates
 exports.updateLocation = asyncHandler(async (req, res) => {
   const { shipmentId, lat, lng } = req.body;
-  
+
   if (!shipmentId || lat === undefined || lng === undefined) {
-    return res.status(400).json({ message: 'Shipment ID, latitude, and longitude are required' });
+    return res.status(400).json({ message: 'shipmentId, lat, and lng are required' });
   }
 
-  const shipment = await Shipment.findOne({
-    _id: shipmentId,
-    assignedDriver: req.user._id,
-  });
-  
-  if (!shipment) {
-    return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
-  }
-  
-  // Update location
+  const shipment = await Shipment.findOne({ _id: shipmentId, assignedDriver: req.user._id });
+  if (!shipment) return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
+
+  // Save to DB
   await shipment.updateLocation(lat, lng);
-  
-  // Recalculate ETA with AI
+
+  // Recalculate remaining ETA using Mapbox road distance
   const newETA = await aiService.updateETA(
     { lat, lng },
-    { lat: shipment.delivery?.lat || shipment.toLat, lng: shipment.delivery?.lng || shipment.toLng }
+    { lat: shipment.delivery.lat, lng: shipment.delivery.lng }
   );
-  
+
   await shipment.updateETA(newETA.estimatedMinutes);
-  
-  // Emit socket events
+
+  // Emit to all users tracking this shipment
   const io = req.app.get('io');
   if (io) {
     io.to(`shipment_${shipment.trackingNumber}`).emit('location_updated', {
@@ -100,7 +75,7 @@ exports.updateLocation = asyncHandler(async (req, res) => {
       location: { lat, lng },
       timestamp: new Date(),
     });
-    
+
     io.to(`shipment_${shipment.trackingNumber}`).emit('eta_updated', {
       shipmentId: shipment._id,
       trackingNumber: shipment.trackingNumber,
@@ -108,34 +83,24 @@ exports.updateLocation = asyncHandler(async (req, res) => {
       timestamp: new Date(),
     });
   }
-  
-  logger.info(`Location updated for shipment ${shipment.trackingNumber}`);
-  
+
+  logger.info(`Location updated for ${shipment.trackingNumber}`);
+
   res.status(200).json({
     success: true,
     currentLocation: shipment.currentLocation,
     currentETA: shipment.currentETA,
-    distance: newETA.distance,
+    remainingDistance: newETA.distance,
   });
 });
 
-// @desc    Add driver notes
-// @route   PUT /api/driver/shipments/:id/notes
-// @access  Private (Driver only)
+// PUT /api/driver/shipments/:id/notes
 exports.addNotes = asyncHandler(async (req, res) => {
-  const { notes } = req.body;
-  
-  const shipment = await Shipment.findOne({
-    _id: req.params.id,
-    assignedDriver: req.user._id,
-  });
-  
-  if (!shipment) {
-    return res.status(404).json({ message: 'Shipment not found' });
-  }
-  
-  shipment.driverNotes = notes;
+  const shipment = await Shipment.findOne({ _id: req.params.id, assignedDriver: req.user._id });
+  if (!shipment) return res.status(404).json({ message: 'Shipment not found' });
+
+  shipment.driverNotes = req.body.notes;
   await shipment.save();
-  
+
   res.status(200).json(shipment);
 });

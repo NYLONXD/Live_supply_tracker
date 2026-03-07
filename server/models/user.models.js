@@ -58,6 +58,8 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
   },
+  restPasswordToken : {type:String,select:false},
+  restPasswordExpire : {type:Date,select:false},
   preferences: {
     notifications: {
       type: Boolean,

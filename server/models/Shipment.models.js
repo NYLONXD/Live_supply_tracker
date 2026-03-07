@@ -1,3 +1,4 @@
+// server/models/Shipment.models.js
 const mongoose = require('mongoose');
 
 const shipmentSchema = new mongoose.Schema({
@@ -6,48 +7,38 @@ const shipmentSchema = new mongoose.Schema({
     unique: true,
     index: true,
   },
-  
-  // Locations (UPDATED - more detailed)
-  from: String, // Keep for backward compatibility
-  to: String,
-  
+
+  // Display names
+  from: { type: String, required: true },
+  to:   { type: String, required: true },
+
+  // Coordinates — single source of truth
   pickup: {
     address: String,
-    lat: Number,
-    lng: Number,
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
   },
-  
+
   delivery: {
     address: String,
-    lat: Number,
-    lng: Number,
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
   },
-  
-  // Legacy fields (your current data)
-  fromLat: Number,
-  fromLng: Number,
-  toLat: Number,
-  lat: Number, // Keep for old records
-  lng: Number,
-  
+
   // Users
-  userId: { // OLD - for backward compatibility
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-  },
-  
-  createdBy: { // NEW
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    required: true,
     index: true,
   },
-  
+
   assignedDriver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     index: true,
   },
-  
+
   // Status
   status: {
     type: String,
@@ -55,75 +46,59 @@ const shipmentSchema = new mongoose.Schema({
     default: 'pending',
     index: true,
   },
-  
-  // ETA (you have this)
-  eta: Number, // Keep for old records
-  
-  // AI-generated data (NEW)
-  estimatedMinutes: Number,
-  currentETA: Number, // Updates as driver moves
-  distance: Number, // km
-  
-  route: {
-    type: [[Number]], // [lng, lat] array for map polyline
+
+  // ETA — single source of truth (minutes)
+  estimatedMinutes: Number,  // AI-predicted total ETA at creation
+  currentETA: Number,        // Recalculated as driver moves
+  distance: Number,          // Real road distance in km (from Mapbox)
+
+  // Route polyline from Mapbox — [lng, lat] array
+  routeGeometry: {
+    type: [[Number]],
   },
-  
-  // Live tracking (NEW)
+
+  // Live tracking
   currentLocation: {
     lat: Number,
     lng: Number,
     lastUpdated: Date,
   },
-  
+
   // Notes
   notes: String,
   driverNotes: String,
-  
+
   // Timestamps
   pickedUpAt: Date,
   deliveredAt: Date,
-  
-}, {
-  timestamps: true,
-});
+
+}, { timestamps: true });
 
 // Indexes
-shipmentSchema.index({ userId: 1, createdAt: -1 });
 shipmentSchema.index({ createdBy: 1, createdAt: -1 });
 shipmentSchema.index({ assignedDriver: 1, status: 1 });
 
 // Auto-generate tracking number
-shipmentSchema.pre('save', function(next) {
+shipmentSchema.pre('save', function (next) {
   if (!this.trackingNumber) {
     this.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
   }
-  
-  // Auto-populate createdBy from userId for old records
-  if (!this.createdBy && this.userId) {
-    this.createdBy = this.userId;
-  }
-  
   next();
 });
 
-// Methods
-shipmentSchema.methods.updateStatus = function(status) {
+shipmentSchema.methods.updateStatus = function (status) {
   this.status = status;
   if (status === 'picked_up') this.pickedUpAt = new Date();
   if (status === 'delivered') this.deliveredAt = new Date();
   return this.save();
 };
 
-shipmentSchema.methods.updateLocation = function(lat, lng) {
-  this.currentLocation = {
-    lat,
-    lng,
-    lastUpdated: new Date(),
-  };
+shipmentSchema.methods.updateLocation = function (lat, lng) {
+  this.currentLocation = { lat, lng, lastUpdated: new Date() };
   return this.save();
 };
 
-shipmentSchema.methods.updateETA = function(newETA) {
+shipmentSchema.methods.updateETA = function (newETA) {
   this.currentETA = newETA;
   return this.save();
 };

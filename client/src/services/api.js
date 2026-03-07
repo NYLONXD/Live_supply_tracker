@@ -43,11 +43,12 @@ api.interceptors.response.use(
 
 // Auth APIs
 export const authAPI = {
-  login: (data) => api.post('/api/auth/login', data),
-  register: (data) => api.post('/api/auth/register', data),
-  getMe: () => api.get('/api/auth/me'),
+  login:          (data)         => api.post('/api/auth/login', data),
+  register:       (data)         => api.post('/api/auth/register', data),
+  getMe:          ()             => api.get('/api/auth/me'),
+  forgotPassword: (data)         => api.post('/api/auth/forgot-password', data),
+  resetPassword:  (token, data)  => api.post(`/api/auth/reset-password/${token}`, data),
 };
-
 // Shipment APIs
 export const shipmentAPI = {
   getAll: (params) => api.get('/api/shipments', { params }),

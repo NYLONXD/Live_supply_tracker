@@ -24,6 +24,9 @@ import DriverDashboard from './pages/Driver/Dashboard';
 import MyDeliveries from './pages/Driver/MyDeliveries';
 import Navigation from './pages/Driver/Navigation';
 
+import ForgetPassword from './pages/Auth/ForgetPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
+
 // Component logic remains the same
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, token } = useAuthStore();
@@ -80,6 +83,8 @@ function App() {
         <Route path="/driver/dashboard" element={<ProtectedRoute allowedRoles={['driver']}><DriverDashboard /></ProtectedRoute>} />
         <Route path="/driver/deliveries" element={<ProtectedRoute allowedRoles={['driver']}><MyDeliveries /></ProtectedRoute>} />
         <Route path="/driver/navigate/:id" element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
+        <Route path="/user/forget-password" element={<ForgetPassword />} />
+        <Route path="/user/reset-password" element={<ResetPassword />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
