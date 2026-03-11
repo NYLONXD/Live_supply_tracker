@@ -65,6 +65,9 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/track/:trackingNumber" element={<PublicTrack />} />
+        <Route path="/forgot-password" element={<ForgetPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
 
         {/* User Routes */}
         <Route path="/user/dashboard" element={<ProtectedRoute allowedRoles={['user']}><UserDashboard /></ProtectedRoute>} />
@@ -83,9 +86,7 @@ function App() {
         <Route path="/driver/dashboard" element={<ProtectedRoute allowedRoles={['driver']}><DriverDashboard /></ProtectedRoute>} />
         <Route path="/driver/deliveries" element={<ProtectedRoute allowedRoles={['driver']}><MyDeliveries /></ProtectedRoute>} />
         <Route path="/driver/navigate/:id" element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
-        <Route path="/user/forget-password" element={<ForgetPassword />} />
-        <Route path="/user/reset-password" element={<ResetPassword />} />
-
+       
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

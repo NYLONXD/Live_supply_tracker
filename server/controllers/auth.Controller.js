@@ -1,4 +1,3 @@
-// server/controllers/auth.Controller.js
 const crypto = require('crypto');
 const User = require('../models/user.models');
 const bcrypt = require('bcryptjs');
@@ -12,31 +11,42 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password (not your real password)
+    pass: process.env.EMAIL_PASS,
   },
 });
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 exports.register = asyncHandler(async (req, res) => {
-  const { email, password, displayName } = req.body;
+  const { email, password, displayName, phone } = req.body;
 
+  // ── Validation ───────────────────────────────────────────────────────────────
   if (!email || !password)
     return res.status(400).json({ message: 'Email and password are required' });
 
+  if (password.length < 6)
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+
+  if (!displayName || !displayName.trim())
+    return res.status(400).json({ message: 'Full name is required' });
+
+  // ── Duplicate check ──────────────────────────────────────────────────────────
   const userExists = await User.findOne({ email: email.toLowerCase() });
   if (userExists)
-    return res.status(400).json({ message: 'User already exists' });
+    return res.status(400).json({ message: 'An account with this email already exists' });
 
+  // ── Role assignment ──────────────────────────────────────────────────────────
   let role = 'user';
   if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) role = 'admin';
 
+  // ── Create user ──────────────────────────────────────────────────────────────
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
   const user = await User.create({
-    email: email.toLowerCase(),
-    password: hashedPassword,
-    displayName: displayName || email.split('@')[0],
+    email:       email.toLowerCase(),
+    password:    hashedPassword,
+    displayName: displayName.trim(),
+    phone:       phone?.trim() || undefined, // ✅ store phone if provided
     role,
   });
 
@@ -44,10 +54,11 @@ exports.register = asyncHandler(async (req, res) => {
   logger.info(`New ${role} registered: ${email}`);
 
   res.status(201).json({
-    _id: user._id,
-    email: user.email,
+    _id:         user._id,
+    email:       user.email,
     displayName: user.displayName,
-    role: user.role,
+    phone:       user.phone,
+    role:        user.role,
     token,
   });
 });
@@ -65,7 +76,7 @@ exports.login = asyncHandler(async (req, res) => {
     return res.status(401).json({ message: 'Invalid email or password' });
 
   if (!user.isActive)
-    return res.status(403).json({ message: 'Account is deactivated' });
+    return res.status(403).json({ message: 'Account is deactivated. Please contact support.' });
 
   user.lastLogin = new Date();
   await user.save();
@@ -74,10 +85,11 @@ exports.login = asyncHandler(async (req, res) => {
   logger.info(`Login: ${email}`);
 
   res.status(200).json({
-    _id: user._id,
-    email: user.email,
+    _id:         user._id,
+    email:       user.email,
     displayName: user.displayName,
-    role: user.role,
+    phone:       user.phone,
+    role:        user.role,
     token,
   });
 });
@@ -85,21 +97,27 @@ exports.login = asyncHandler(async (req, res) => {
 // ─── Get Me ───────────────────────────────────────────────────────────────────
 exports.getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
   res.status(200).json(user);
 });
 
 // ─── Update Preferences ───────────────────────────────────────────────────────
 exports.updatePreferences = asyncHandler(async (req, res) => {
+  const updates = {};
+  if (req.body.notifications !== undefined)
+    updates['preferences.notifications'] = req.body.notifications;
+  if (req.body.theme !== undefined)
+    updates['preferences.theme'] = req.body.theme;
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    { preferences: req.body },
-    { new: true }
+    { $set: updates },
+    { new: true, runValidators: true }
   );
   res.status(200).json(user);
 });
 
 // ─── Forgot Password ──────────────────────────────────────────────────────────
-// POST /api/auth/forgot-password
 exports.forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -108,16 +126,15 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email: email.toLowerCase() });
 
-  // Always return 200 — don't reveal if email exists
+  // Always return 200 — never reveal whether email exists
   if (!user) {
     return res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
   }
 
-  // Generate raw token, store hashed version in DB
-  const rawToken = crypto.randomBytes(32).toString('hex');
+  const rawToken    = crypto.randomBytes(32).toString('hex');
   const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
 
-  user.resetPasswordToken = hashedToken;
+  user.resetPasswordToken  = hashedToken;
   user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
   await user.save();
 
@@ -125,15 +142,15 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 
   try {
     await transporter.sendMail({
-      from: `"Supply Tracker" <${process.env.EMAIL_USER}>`,
-      to: user.email,
+      from:    `"Supply Tracker" <${process.env.EMAIL_USER}>`,
+      to:      user.email,
       subject: 'Password Reset Request',
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: auto; padding: 32px; border: 1px solid #e5e7eb; border-radius: 8px;">
           <h2 style="margin-bottom: 8px;">Reset Your Password</h2>
           <p style="color: #6b7280;">You requested a password reset for your Supply Tracker account.</p>
           <p style="color: #6b7280;">This link expires in <strong>15 minutes</strong>.</p>
-          <a href="${resetURL}" 
+          <a href="${resetURL}"
              style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">
             Reset Password
           </a>
@@ -148,8 +165,7 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
 
   } catch (error) {
-    // Rollback token if email fails
-    user.resetPasswordToken = undefined;
+    user.resetPasswordToken  = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
 
@@ -159,39 +175,38 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 });
 
 // ─── Reset Password ───────────────────────────────────────────────────────────
-// POST /api/auth/reset-password/:token
 exports.resetPassword = asyncHandler(async (req, res) => {
   const { password } = req.body;
-  const { token } = req.params;
+  const { token }    = req.params;
+
+  if (!token)
+    return res.status(400).json({ message: 'Reset token is required' });
 
   if (!password || password.length < 6)
     return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
-  // Hash the incoming raw token to compare with stored hash
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   const user = await User.findOne({
-    resetPasswordToken: hashedToken,
+    resetPasswordToken:  hashedToken,
     resetPasswordExpire: { $gt: Date.now() },
   }).select('+password');
 
   if (!user)
     return res.status(400).json({ message: 'Invalid or expired reset link.' });
 
-  // Set new password
-  const salt = await bcrypt.genSalt(10);
-  user.password = await bcrypt.hash(password, salt);
-  user.resetPasswordToken = undefined;
+  const salt           = await bcrypt.genSalt(10);
+  user.password        = await bcrypt.hash(password, salt);
+  user.resetPasswordToken  = undefined;
   user.resetPasswordExpire = undefined;
   await user.save();
 
   logger.info(`Password reset successful for ${user.email}`);
 
-  // Return a new JWT so they're logged in immediately
   const jwtToken = generateToken(user._id);
   res.status(200).json({
     message: 'Password reset successful.',
-    token: jwtToken,
-    role: user.role,
+    token:   jwtToken,
+    role:    user.role,
   });
 });

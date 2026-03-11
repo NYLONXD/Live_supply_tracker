@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
+// ─── Request interceptor ──────────────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -22,77 +22,81 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// ─── Response interceptor ─────────────────────────────────────────────────────
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || error.message || 'Something went wrong';
-    
+
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      toast.error('Session expired. Please login again.');
+      // ✅ Fixed: guard against redirect loop when already on /login
+      if (window.location.pathname !== '/login') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        toast.error('Session expired. Please login again.');
+      }
     } else {
       toast.error(message);
     }
-    
+
     return Promise.reject(error);
   }
 );
 
-// Auth APIs
+// ─── Auth APIs ────────────────────────────────────────────────────────────────
 export const authAPI = {
-  login:          (data)         => api.post('/api/auth/login', data),
-  register:       (data)         => api.post('/api/auth/register', data),
-  getMe:          ()             => api.get('/api/auth/me'),
-  forgotPassword: (data)         => api.post('/api/auth/forgot-password', data),
-  resetPassword:  (token, data)  => api.post(`/api/auth/reset-password/${token}`, data),
+  login:          (data)        => api.post('/api/auth/login', data),
+  register:       (data)        => api.post('/api/auth/register', data),
+  getMe:          ()            => api.get('/api/auth/me'),
+  forgotPassword: (data)        => api.post('/api/auth/forgot-password', data),
+  resetPassword:  (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
 };
-// Shipment APIs
+
+// ─── Shipment APIs ────────────────────────────────────────────────────────────
 export const shipmentAPI = {
-  getAll: (params) => api.get('/api/shipments', { params }),
-  getById: (id) => api.get(`/api/shipments/${id}`),
-  create: (data) => api.post('/api/shipments', data),
-  update: (id, data) => api.put(`/api/shipments/${id}`, data),
-  delete: (id) => api.delete(`/api/shipments/${id}`),
-  track: (trackingNumber) => api.get(`/api/track/${trackingNumber}`),
+  getAll:  (params)        => api.get('/api/shipments', { params }),
+  getById: (id)            => api.get(`/api/shipments/${id}`),
+  create:  (data)          => api.post('/api/shipments', data),
+  update:  (id, data)      => api.put(`/api/shipments/${id}`, data),
+  delete:  (id)            => api.delete(`/api/shipments/${id}`),
+  track:   (trackingNumber)=> api.get(`/api/track/${trackingNumber}`),
 };
 
-// Admin APIs
+// ─── Admin APIs ───────────────────────────────────────────────────────────────
 export const adminAPI = {
-  getAllUsers: () => api.get('/api/admin/users'),
-  getAllDrivers: () => api.get('/api/admin/drivers'),
-  promoteToDriver: (userId, data) => api.post(`/api/admin/users/${userId}/promote-driver`, data),
-  demoteDriver: (userId) => api.post(`/api/admin/users/${userId}/demote-driver`),
-  assignDriver: (shipmentId, driverId) => api.post(`/api/admin/shipments/${shipmentId}/assign`, { driverId }),
-  toggleUserStatus: (userId) => api.patch(`/api/admin/users/${userId}/toggle`),
+  getAllUsers:      ()                       => api.get('/api/admin/users'),
+  getAllDrivers:    ()                       => api.get('/api/admin/drivers'),
+  promoteToDriver: (userId, data)           => api.post(`/api/admin/users/${userId}/promote-driver`, data),
+  demoteDriver:    (userId)                 => api.post(`/api/admin/users/${userId}/demote-driver`),
+  assignDriver:    (shipmentId, driverId)   => api.post(`/api/admin/shipments/${shipmentId}/assign`, { driverId }),
+  toggleUserStatus:(userId)                 => api.patch(`/api/admin/users/${userId}/toggle`),
 };
 
-// Driver APIs
+// ─── Driver APIs ──────────────────────────────────────────────────────────────
 export const driverAPI = {
-  getMyShipments: (params) => api.get('/api/driver/shipments', { params }),
-  updateStatus: (shipmentId, status) => api.put(`/api/driver/shipments/${shipmentId}/status`, { status }),
-  updateLocation: (data) => api.post('/api/driver/location', data),
-  addNotes: (shipmentId, notes) => api.put(`/api/driver/shipments/${shipmentId}/notes`, { notes }),
+  getMyShipments: (params)              => api.get('/api/driver/shipments', { params }),
+  updateStatus:   (shipmentId, status)  => api.put(`/api/driver/shipments/${shipmentId}/status`, { status }),
+  updateLocation: (data)                => api.post('/api/driver/location', data),
+  addNotes:       (shipmentId, notes)   => api.put(`/api/driver/shipments/${shipmentId}/notes`, { notes }),
 };
 
-// Analytics APIs
+// ─── Analytics APIs ───────────────────────────────────────────────────────────
 export const analyticsAPI = {
   getOverview: () => api.get('/api/shipments/analytics'),
-  getPerDay: () => api.get('/api/shipments/analytics/per-day'),
+  getPerDay:   () => api.get('/api/shipments/analytics/per-day'),
 };
 
-// Tasks APIs
+// ─── Tasks APIs ───────────────────────────────────────────────────────────────
 export const tasksAPI = {
-  getAll: () => api.get('/api/tasks'),
-  create: (data) => api.post('/api/tasks', data),
-  update: (id, data) => api.put(`/api/tasks/${id}`, data),
-  delete: (id) => api.delete(`/api/tasks/${id}`),
+  getAll:       ()           => api.get('/api/tasks'),
+  create:       (data)       => api.post('/api/tasks', data),
+  update:       (id, data)   => api.put(`/api/tasks/${id}`, data),
+  delete:       (id)         => api.delete(`/api/tasks/${id}`),
   updateStatus: (id, status) => api.patch(`/api/tasks/${id}/status`, { status }),
 };
 
-// AI APIs
+// ─── AI APIs ──────────────────────────────────────────────────────────────────
 export const aiAPI = {
   previewETA: (data) => api.post('/api/ai/preview-eta', data),
 };

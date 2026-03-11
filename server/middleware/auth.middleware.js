@@ -2,11 +2,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 
-// Verify JWT token
+// ─── Protect ──────────────────────────────────────────────────────────────────
 exports.protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  if (req.headers.authorization?.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
 
@@ -16,8 +16,10 @@ exports.protect = asyncHandler(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select('-__v');
-    
+
+    // ✅ Fixed: explicitly exclude both password and __v
+    req.user = await User.findById(decoded.id).select('-password -__v');
+
     if (!req.user || !req.user.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
@@ -28,7 +30,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-// Check if user is admin
+// ─── Admin ────────────────────────────────────────────────────────────────────
 exports.admin = (req, res, next) => {
   if (req.user && req.user.isAdmin()) {
     next();
@@ -37,7 +39,7 @@ exports.admin = (req, res, next) => {
   }
 };
 
-// Check if user is driver
+// ─── Driver ───────────────────────────────────────────────────────────────────
 exports.driver = (req, res, next) => {
   if (req.user && req.user.isDriver()) {
     next();
@@ -46,8 +48,7 @@ exports.driver = (req, res, next) => {
   }
 };
 
-
-// Generate JWT token
+// ─── Generate Token ───────────────────────────────────────────────────────────
 exports.generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d',

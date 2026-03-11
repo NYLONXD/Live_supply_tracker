@@ -1,4 +1,3 @@
-// client/src/pages/Auth/ForgotPassword.jsx
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Truck, ArrowLeft } from 'lucide-react';
@@ -18,8 +17,9 @@ export default function ForgotPassword() {
     try {
       await authAPI.forgotPassword({ email });
       setSent(true);
-      toast.success('Reset link sent if that email exists!');
+      // No toast here — the success state UI already communicates this clearly
     } catch {
+      // Only real network failures reach here (server always returns 200)
       toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -33,7 +33,7 @@ export default function ForgotPassword() {
 
         <div className="text-center mb-10">
           <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
-            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white">
+            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white group-hover:bg-zinc-800 transition-colors">
               <Truck size={16} />
             </div>
             <span className="font-bold tracking-tight text-lg">SUPPLY TRACKER</span>
@@ -49,9 +49,13 @@ export default function ForgotPassword() {
             </div>
             <p className="text-zinc-700 font-medium">Check your inbox</p>
             <p className="text-zinc-500 text-sm">
-              If <span className="font-semibold text-black">{email}</span> is registered, a reset link has been sent. It expires in 15 minutes.
+              If <span className="font-semibold text-black">{email}</span> is registered, a reset
+              link has been sent. It expires in 15 minutes.
             </p>
-            <Link to="/login" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-black transition-colors mt-4">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-black transition-colors mt-4"
+            >
               <ArrowLeft size={14} />
               Back to login
             </Link>
@@ -72,7 +76,10 @@ export default function ForgotPassword() {
               Send Reset Link
             </Button>
 
-            <Link to="/login" className="flex items-center justify-center gap-2 text-sm text-zinc-500 hover:text-black transition-colors mt-2">
+            <Link
+              to="/login"
+              className="flex items-center justify-center gap-2 text-sm text-zinc-500 hover:text-black transition-colors mt-2"
+            >
               <ArrowLeft size={14} />
               Back to login
             </Link>

@@ -1,5 +1,4 @@
-// client/src/pages/Auth/ResetPassword.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Lock, Truck } from 'lucide-react';
 import Input from '../../components/common/Input';
@@ -11,11 +10,19 @@ import toast from 'react-hot-toast';
 export default function ResetPassword() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuth, updateUser } = useAuthStore();
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ Fixed: guard against missing/malformed token in URL
+  useEffect(() => {
+    if (!token) {
+      toast.error('Invalid reset link.');
+      navigate('/forgot-password');
+    }
+  }, [token, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +31,6 @@ export default function ResetPassword() {
       toast.error('Password must be at least 6 characters');
       return;
     }
-
     if (password !== confirm) {
       toast.error('Passwords do not match');
       return;
@@ -34,8 +40,12 @@ export default function ResetPassword() {
     try {
       const { data } = await authAPI.resetPassword(token, { password });
 
-      // Log them in directly after reset
-      setAuth(data.token, { role: data.role });
+      // ✅ Fixed: fetch full user profile before setting auth
+      // (backend only returns token + role, not the full user object)
+      localStorage.setItem('token', data.token);
+      const meRes = await authAPI.getMe();
+      setAuth(data.token, meRes.data);
+
       toast.success('Password reset! Redirecting...');
 
       setTimeout(() => {
@@ -44,9 +54,12 @@ export default function ResetPassword() {
           case 'driver': navigate('/driver/dashboard'); break;
           default:       navigate('/user/dashboard');
         }
-      }, 1000);
+      }, 500);
 
     } catch (err) {
+      // ✅ Fixed: clear fields on error so expired-link state is obvious
+      setPassword('');
+      setConfirm('');
       const msg = err.response?.data?.message || 'Invalid or expired reset link.';
       toast.error(msg);
     } finally {
@@ -61,7 +74,7 @@ export default function ResetPassword() {
 
         <div className="text-center mb-10">
           <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
-            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white">
+            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white group-hover:bg-zinc-800 transition-colors">
               <Truck size={16} />
             </div>
             <span className="font-bold tracking-tight text-lg">SUPPLY TRACKER</span>
