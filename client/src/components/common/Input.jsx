@@ -1,4 +1,6 @@
-export default function Input({
+import { forwardRef } from 'react';
+
+const Input = forwardRef(function Input({
   label,
   type = 'text',
   name,
@@ -12,7 +14,7 @@ export default function Input({
   className = '',
   containerClassName = '',
   ...props
-}) {
+}, ref) {
   return (
     <div className={containerClassName}>
       {label && (
@@ -29,6 +31,7 @@ export default function Input({
         )}
 
         <input
+          ref={ref}
           type={type}
           name={name}
           id={name}
@@ -62,4 +65,6 @@ export default function Input({
       )}
     </div>
   );
-}
+});
+
+export default Input;

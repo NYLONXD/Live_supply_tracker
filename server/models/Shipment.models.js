@@ -11,6 +11,15 @@ const shipmentSchema = new mongoose.Schema({
   // Display names
   from: { type: String, required: true },
   to:   { type: String, required: true },
+  customerName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  customerPhone: {
+    type: String,
+    trim: true,
+  },
 
   // Coordinates — single source of truth
   pickup: {

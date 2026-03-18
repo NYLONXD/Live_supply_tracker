@@ -48,7 +48,7 @@ export default function Signup() {
       switch (user.role) {
         case 'admin':  navigate('/admin/dashboard');  break;
         case 'driver': navigate('/driver/dashboard'); break;
-        default:       navigate('/user/dashboard');
+        default:       navigate('/track');
       }
     } catch (err) {
       // ✅ Fixed: show server error in UI instead of swallowing it

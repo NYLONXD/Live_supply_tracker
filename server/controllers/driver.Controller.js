@@ -3,6 +3,7 @@ const Shipment = require('../models/Shipment.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const logger = require('../utils/logger.utils');
 const aiService = require('../services/aiIntegration.service');
+const { cache } = require('../config/redis.config');
 
 // GET /api/driver/shipments
 exports.getMyShipments = asyncHandler(async (req, res) => {
@@ -29,6 +30,8 @@ exports.updateStatus = asyncHandler(async (req, res) => {
   if (!shipment) return res.status(404).json({ message: 'Shipment not found or not assigned to you' });
 
   await shipment.updateStatus(status);
+  await cache.delPattern('shipments:*');
+  await cache.del(`track:${shipment.trackingNumber}`);
 
   const io = req.app.get('io');
   if (io) {
@@ -65,6 +68,8 @@ exports.updateLocation = asyncHandler(async (req, res) => {
   );
 
   await shipment.updateETA(newETA.estimatedMinutes);
+  await cache.delPattern('shipments:*');
+  await cache.del(`track:${shipment.trackingNumber}`);
 
   // Emit to all users tracking this shipment
   const io = req.app.get('io');
@@ -101,6 +106,8 @@ exports.addNotes = asyncHandler(async (req, res) => {
 
   shipment.driverNotes = req.body.notes;
   await shipment.save();
+  await cache.delPattern('shipments:*');
+  await cache.del(`track:${shipment.trackingNumber}`);
 
   res.status(200).json(shipment);
 });

@@ -42,7 +42,7 @@ export default function AdminDashboard() {
         <MetricCard label="Total Shipments" value={stats.totalShipments} icon={Package} trend="+12%" />
         <MetricCard label="System Users" value={userStats.total} icon={Users} />
         <MetricCard label="Active Drivers" value={userStats.drivers} icon={Truck} active />
-        <MetricCard label="Avg Response" value={`${stats.averageETA.toFixed(1)}h`} icon={Activity} />
+        <MetricCard label="Avg ETA" value={`${stats.averageETA.toFixed(0)} min`} icon={Activity} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -110,8 +110,9 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-2">
                  <QuickLink to="/admin/users" label="Users" />
                  <QuickLink to="/admin/drivers" label="Fleet" />
+                 <QuickLink to="/admin/shipments/create" label="Create" />
                  <QuickLink to="/admin/analytics" label="Reports" />
-                 <QuickLink to="/settings" label="Config" />
+                 <QuickLink to="/admin/shipments" label="Shipments" />
               </div>
            </div>
         </div>

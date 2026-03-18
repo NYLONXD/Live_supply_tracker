@@ -1,107 +1,224 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Package, MapPin, Clock, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Clock, MapPin, Package, Search, Truck } from 'lucide-react';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+import Input from '../../components/common/Input';
+import GoogleShipmentMap from '../../components/common/GoogleShipmentMap';
 import { shipmentAPI } from '../../services/api';
+import socketService from '../../services/socket.service';
 
-export function PublicTrack() {
+export default function PublicTrack() {
+  const navigate = useNavigate();
   const { trackingNumber } = useParams();
+  const [searchValue, setSearchValue] = useState(trackingNumber || '');
   const [shipment, setShipment] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(Boolean(trackingNumber));
+  const [error, setError] = useState('');
+
+  const currentLocation = useMemo(() => shipment?.currentLocation || null, [shipment]);
 
   useEffect(() => {
+    setSearchValue(trackingNumber || '');
     if (trackingNumber) {
-      fetchShipment();
+      fetchShipment(trackingNumber);
+    } else {
+      setShipment(null);
+      setLoading(false);
+      setError('');
     }
+
+    return () => {
+      if (trackingNumber) {
+        socketService.leaveShipment(trackingNumber);
+      }
+      socketService.removeAllListeners();
+    };
   }, [trackingNumber]);
 
-  const fetchShipment = async () => {
+  useEffect(() => {
+    if (!shipment?.trackingNumber) return;
+
+    socketService.joinShipment(shipment.trackingNumber);
+
+    socketService.onLocationUpdate((data) => {
+      if (data.trackingNumber === shipment.trackingNumber) {
+        setShipment((prev) => ({ ...prev, currentLocation: data.location }));
+      }
+    });
+
+    socketService.onStatusUpdate((data) => {
+      if (data.trackingNumber === shipment.trackingNumber) {
+        setShipment((prev) => ({ ...prev, status: data.status }));
+      }
+    });
+
+    socketService.onETAUpdate((data) => {
+      if (data.trackingNumber === shipment.trackingNumber) {
+        setShipment((prev) => ({ ...prev, currentETA: data.newETA }));
+      }
+    });
+
+    return () => {
+      socketService.leaveShipment(shipment.trackingNumber);
+      socketService.removeAllListeners();
+    };
+  }, [shipment?.trackingNumber]);
+
+  const fetchShipment = async (trackingId) => {
     try {
-      const { data } = await shipmentAPI.track(trackingNumber);
+      setLoading(true);
+      const { data } = await shipmentAPI.track(trackingId);
       setShipment(data);
-    } catch (error) {
-      setError(true);
+      setError('');
+    } catch (err) {
+      setShipment(null);
+      setError(err.response?.data?.message || 'Shipment not found');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !shipment) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <Package className="mx-auto mb-4 text-slate-600" size={48} />
-          <h2 className="text-xl font-semibold text-slate-400 mb-2">Shipment Not Found</h2>
-          <p className="text-slate-500">Please check your tracking number and try again</p>
-        </Card>
-      </div>
-    );
-  }
+  const handleSearch = (event) => {
+    event.preventDefault();
+    const value = searchValue.trim();
+    if (!value) {
+      setError('Please enter a tracking number');
+      return;
+    }
+    navigate(`/track/${value}`);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Track Your Shipment</h1>
-          <p className="text-slate-400">Track shipment #{trackingNumber}</p>
-        </div>
+    <div className="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <Card variant="elevated">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-zinc-500">Shipment Tracking</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-black">Track with your shipment ID</h1>
+              <p className="mt-2 text-sm text-brand-zinc-500">
+                Customers only need the tracking number to see live delivery progress.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <form onSubmit={handleSearch} className="flex w-full max-w-xl gap-3">
+              <Input
+                name="tracking"
+                value={searchValue}
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Enter tracking number"
+                icon={Search}
+                className="h-11"
+                containerClassName="flex-1"
+              />
+              <Button type="submit" className="h-11 whitespace-nowrap">
+                Search
+              </Button>
+            </form>
+          </div>
+        </Card>
+
+        {loading && (
           <Card>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-purple-500/20 rounded-lg">
-                <Package className="text-purple-400" size={24} />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Shipment Details</h3>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-slate-400 mb-1">Status</p>
-                <p className="text-white font-medium capitalize">{shipment.status.replace('_', ' ')}</p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400 mb-1">From</p>
-                <p className="text-white">{shipment.from}</p>
-              </div>
-              <div>
-                <p className="text-sm text-slate-400 mb-1">To</p>
-                <p className="text-white">{shipment.to}</p>
-              </div>
+            <div className="flex h-64 items-center justify-center">
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-black border-t-transparent" />
             </div>
           </Card>
+        )}
 
-          <Card gradient>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Clock className="text-blue-400" size={24} />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Estimated Arrival</h3>
-            </div>
-            <p className="text-3xl font-bold text-blue-400">
-              {shipment.currentETA ? `${Math.round(shipment.currentETA)} min` : 'Calculating...'}
+        {!loading && error && (
+          <Card className="text-center">
+            <Package className="mx-auto mb-4 text-brand-zinc-300" size={44} />
+            <h2 className="text-xl font-semibold text-black">{error}</h2>
+            <p className="mt-2 text-sm text-brand-zinc-500">
+              Try the exact tracking ID shared by the business admin.
             </p>
-            {shipment.driver && (
-              <div className="mt-4 pt-4 border-t border-slate-700">
-                <div className="flex items-center gap-2 text-sm">
-                  <Truck size={16} className="text-slate-400" />
-                  <span className="text-slate-400">Driver: {shipment.driver.name}</span>
-                </div>
-              </div>
-            )}
           </Card>
-        </div>
+        )}
+
+        {!loading && shipment && (
+          <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+            <div className="space-y-4">
+              <Card>
+                <div className="flex items-center gap-3">
+                  <div className="rounded-sm bg-black p-3 text-white">
+                    <Package size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Tracking Number</p>
+                    <p className="font-mono text-sm font-semibold text-black">{shipment.trackingNumber}</p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Status</p>
+                    <p className="mt-1 text-base font-semibold text-black">{shipment.status.replaceAll('_', ' ')}</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Distance</p>
+                      <p className="mt-1 text-lg font-bold text-black">{shipment.distance ? `${shipment.distance.toFixed(1)} km` : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">ETA</p>
+                      <p className="mt-1 text-lg font-bold text-black">{shipment.currentETA ? `${Math.round(shipment.currentETA)} min` : '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <div className="space-y-4 text-sm">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-1 text-black" size={16} />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Pickup</p>
+                      <p className="mt-1 text-black">{shipment.from}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-1 text-black" size={16} />
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Delivery</p>
+                      <p className="mt-1 text-black">{shipment.to}</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {shipment.driver && (
+                <Card>
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-sm bg-zinc-100 p-3">
+                      <Truck size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Driver</p>
+                      <p className="font-semibold text-black">{shipment.driver.name}</p>
+                      {shipment.driver.phone && <p className="text-sm text-brand-zinc-500">{shipment.driver.phone}</p>}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              <Card>
+                <div className="flex items-center gap-3 text-sm text-brand-zinc-600">
+                  <Clock size={16} />
+                  <span>Live updates appear automatically while this page is open.</span>
+                </div>
+              </Card>
+            </div>
+
+            <Card noPadding className="overflow-hidden">
+              <GoogleShipmentMap shipment={shipment} currentLocation={currentLocation} />
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-export default PublicTrack;

@@ -8,10 +8,10 @@ export default function Navbar() {
     <nav className="flex justify-between px-6 py-3 bg-slate-800 text-white">
       <span>Live Supply Tracker</span>
       <div className="flex gap-4">
-        {user?.role === 'user' && <Link to="/user/dashboard">Dashboard</Link>}
+        {!user && <Link to="/track">Track</Link>}
         {user?.role === 'admin' && <Link to="/admin/dashboard">Admin</Link>}
         {user?.role === 'driver' && <Link to="/driver/dashboard">Driver</Link>}
-        <button onClick={logout}>Logout</button>
+        {user && <button onClick={logout}>Logout</button>}
       </div>
     </nav>
   );

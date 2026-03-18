@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, Trash2, UserPlus, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Trash2, UserPlus } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
@@ -51,6 +52,7 @@ export default function AllShipments() {
       filtered = filtered.filter(
         (s) =>
           s.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.from?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.to?.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -142,6 +144,10 @@ export default function AllShipments() {
             <option value="in_transit">In Transit</option>
             <option value="delivered">Delivered</option>
           </select>
+
+          <Link to="/admin/shipments/create">
+            <Button className="w-full md:w-auto">Create Shipment</Button>
+          </Link>
         </div>
 
         <div className="mt-4 pt-4 border-t border-slate-700 text-sm text-slate-400">
@@ -179,7 +185,12 @@ export default function AllShipments() {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-sm text-slate-400">
-                    {shipment.createdBy?.displayName || 'N/A'}
+                    <div>
+                      <div className="font-medium text-slate-200">{shipment.customerName || 'N/A'}</div>
+                      {shipment.customerPhone && (
+                        <div className="text-xs text-slate-500">{shipment.customerPhone}</div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4">{getStatusBadge(shipment.status)}</td>
                   <td className="py-3 px-4">

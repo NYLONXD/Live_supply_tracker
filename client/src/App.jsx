@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './stores/authStore';
 
@@ -8,17 +9,12 @@ import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
 import PublicTrack from './pages/Public/Track';
 
-// Role Specific Pages (Keep existing imports)
-import UserDashboard from './pages/User/Dashboard';
-import CreateShipment from './pages/User/CreateShipment';
-import MyShipments from './pages/User/MyShipments';
-import TrackShipment from './pages/User/TrackShipment';
-
 import AdminDashboard from './pages/Admin/Dashboard';
 import AllShipments from './pages/Admin/AllShipments';
 import Users from './pages/Admin/Users';
 import Drivers from './pages/Admin/Drivers';
 import Analytics from './pages/Admin/Analytics';
+import AdminCreateShipment from './pages/Admin/CreateShipment';
 
 import DriverDashboard from './pages/Driver/Dashboard';
 import MyDeliveries from './pages/Driver/MyDeliveries';
@@ -29,13 +25,20 @@ import ResetPassword from './pages/Auth/ResetPassword';
 
 // Component logic remains the same
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, token } = useAuthStore();
-  if (!token || !user) return <Navigate to="/login" replace />;
+  const { user, initialized, loading } = useAuthStore();
+  if (!initialized || loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
   return children;
 };
 
 function App() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
   return (
     <BrowserRouter>
       <Toaster
@@ -64,19 +67,14 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/track" element={<PublicTrack />} />
         <Route path="/track/:trackingNumber" element={<PublicTrack />} />
         <Route path="/forgot-password" element={<ForgetPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-
-        {/* User Routes */}
-        <Route path="/user/dashboard" element={<ProtectedRoute allowedRoles={['user']}><UserDashboard /></ProtectedRoute>} />
-        <Route path="/user/create" element={<ProtectedRoute allowedRoles={['user']}><CreateShipment /></ProtectedRoute>} />
-        <Route path="/user/shipments" element={<ProtectedRoute allowedRoles={['user']}><MyShipments /></ProtectedRoute>} />
-        <Route path="/user/track/:id" element={<ProtectedRoute allowedRoles={['user']}><TrackShipment /></ProtectedRoute>} />
-
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/shipments/create" element={<ProtectedRoute allowedRoles={['admin']}><AdminCreateShipment /></ProtectedRoute>} />
         <Route path="/admin/shipments" element={<ProtectedRoute allowedRoles={['admin']}><AllShipments /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
         <Route path="/admin/drivers" element={<ProtectedRoute allowedRoles={['admin']}><Drivers /></ProtectedRoute>} />
@@ -88,7 +86,7 @@ function App() {
         <Route path="/driver/navigate/:id" element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
        
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/track" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 export default function ResetPassword() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const { setAuth, updateUser } = useAuthStore();
+  const { setAuth } = useAuthStore();
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -40,19 +40,16 @@ export default function ResetPassword() {
     try {
       const { data } = await authAPI.resetPassword(token, { password });
 
-      // ✅ Fixed: fetch full user profile before setting auth
-      // (backend only returns token + role, not the full user object)
-      localStorage.setItem('token', data.token);
       const meRes = await authAPI.getMe();
-      setAuth(data.token, meRes.data);
+      setAuth(meRes.data);
 
       toast.success('Password reset! Redirecting...');
 
       setTimeout(() => {
-        switch (data.role) {
+        switch (meRes.data.role) {
           case 'admin':  navigate('/admin/dashboard');  break;
           case 'driver': navigate('/driver/dashboard'); break;
-          default:       navigate('/user/dashboard');
+          default:       navigate('/track');
         }
       }, 500);
 
