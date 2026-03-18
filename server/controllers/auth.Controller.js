@@ -6,6 +6,27 @@ const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
 const logger = require('../utils/logger.utils');
 
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+const sendAuthResponse = (res, statusCode, user, extra = {}) => {
+  const token = generateToken(user._id);
+  res.cookie('token', token, getCookieOptions());
+
+  return res.status(statusCode).json({
+    _id: user._id,
+    email: user.email,
+    displayName: user.displayName,
+    phone: user.phone,
+    role: user.role,
+    ...extra,
+  });
+};
+
 // ─── Email transporter ────────────────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -50,17 +71,9 @@ exports.register = asyncHandler(async (req, res) => {
     role,
   });
 
-  const token = generateToken(user._id);
   logger.info(`New ${role} registered: ${email}`);
 
-  res.status(201).json({
-    _id:         user._id,
-    email:       user.email,
-    displayName: user.displayName,
-    phone:       user.phone,
-    role:        user.role,
-    token,
-  });
+  sendAuthResponse(res, 201, user);
 });
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -81,17 +94,9 @@ exports.login = asyncHandler(async (req, res) => {
   user.lastLogin = new Date();
   await user.save();
 
-  const token = generateToken(user._id);
   logger.info(`Login: ${email}`);
 
-  res.status(200).json({
-    _id:         user._id,
-    email:       user.email,
-    displayName: user.displayName,
-    phone:       user.phone,
-    role:        user.role,
-    token,
-  });
+  sendAuthResponse(res, 200, user);
 });
 
 // ─── Get Me ───────────────────────────────────────────────────────────────────
@@ -203,10 +208,13 @@ exports.resetPassword = asyncHandler(async (req, res) => {
 
   logger.info(`Password reset successful for ${user.email}`);
 
-  const jwtToken = generateToken(user._id);
-  res.status(200).json({
+  sendAuthResponse(res, 200, user, {
     message: 'Password reset successful.',
-    token:   jwtToken,
-    role:    user.role,
   });
+});
+
+// ─── Logout ───────────────────────────────────────────────────────────────────
+exports.logout = asyncHandler(async (req, res) => {
+  res.clearCookie('token', getCookieOptions());
+  res.status(200).json({ message: 'Logged out successfully' });
 });

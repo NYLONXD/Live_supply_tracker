@@ -5,22 +5,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-// ─── Request interceptor ──────────────────────────────────────────────────────
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 // ─── Response interceptor ─────────────────────────────────────────────────────
 api.interceptors.response.use(
@@ -29,9 +18,8 @@ api.interceptors.response.use(
     const message = error.response?.data?.message || error.message || 'Something went wrong';
 
     if (error.response?.status === 401) {
-      // ✅ Fixed: guard against redirect loop when already on /login
-      if (window.location.pathname !== '/login') {
-        localStorage.removeItem('token');
+      const hasSessionUser = Boolean(localStorage.getItem('user'));
+      if (hasSessionUser && !['/', '/login', '/track'].includes(window.location.pathname)) {
         localStorage.removeItem('user');
         window.location.href = '/login';
         toast.error('Session expired. Please login again.');
@@ -51,6 +39,7 @@ export const authAPI = {
   getMe:          ()            => api.get('/api/auth/me'),
   forgotPassword: (data)        => api.post('/api/auth/forgot-password', data),
   resetPassword:  (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
+  logout:         ()            => api.post('/api/auth/logout'),
 };
 
 // ─── Shipment APIs ────────────────────────────────────────────────────────────
@@ -83,8 +72,8 @@ export const driverAPI = {
 
 // ─── Analytics APIs ───────────────────────────────────────────────────────────
 export const analyticsAPI = {
-  getOverview: () => api.get('/api/shipments/analytics'),
-  getPerDay:   () => api.get('/api/shipments/analytics/per-day'),
+  getOverview: () => api.get('/api/analytics'),
+  getPerDay:   () => api.get('/api/analytics/per-day'),
 };
 
 // ─── Tasks APIs ───────────────────────────────────────────────────────────────

@@ -5,11 +5,15 @@ import useAuthStore from '../stores/authStore';
 
 export default function useAuth(requiredRole = null) {
   const navigate = useNavigate();
-  const { user, token, loading, updateUser } = useAuthStore();
+  const { user, loading, initialized, checkAuth } = useAuthStore();
 
   useEffect(() => {
-    // Check if user is authenticated
-    if (!token && !loading) {
+    if (!initialized) {
+      checkAuth();
+      return;
+    }
+
+    if (!user && !loading) {
       navigate('/login');
       return;
     }
@@ -25,21 +29,15 @@ export default function useAuth(requiredRole = null) {
           navigate('/driver/dashboard');
           break;
         default:
-          navigate('/user/dashboard');
+          navigate('/track');
       }
     }
-
-    // Refresh user data if token exists but user data is stale
-    if (token && !user) {
-      updateUser();
-    }
-  }, [token, user, requiredRole, navigate, loading, updateUser]);
+  }, [user, requiredRole, navigate, loading, initialized, checkAuth]);
 
   return {
     user,
-    token,
     loading,
-    isAuthenticated: !!token,
+    isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
     isDriver: user?.role === 'driver',
     isUser: user?.role === 'user',

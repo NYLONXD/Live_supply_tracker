@@ -15,6 +15,7 @@ class SocketService {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
+        withCredentials: true,
       });
 
       this.socket.on('connect', () => console.log('Socket connected:', this.socket.id));
@@ -56,11 +57,37 @@ class SocketService {
     this.socket?.on('shipment_assigned', callback);
   }
 
+  onDriverLocationAck(callback) {
+    this.socket?.on('driver_location_ack', callback);
+  }
+
+  onDriverLocationError(callback) {
+    this.socket?.on('driver_location_error', callback);
+  }
+
+  emitDriverLocation(payload) {
+    this.socket?.emit('driver_location_update', payload);
+  }
+
+  updateLocation(payload) {
+    this.emitDriverLocation({
+      shipmentId: payload.shipmentId,
+      lat: payload.location?.lat ?? payload.lat,
+      lng: payload.location?.lng ?? payload.lng,
+    });
+  }
+
+  updateStatus(payload) {
+    this.socket?.emit('driver_status_update', payload);
+  }
+
   removeAllListeners() {
     this.socket?.off('location_updated');
     this.socket?.off('status_updated');
     this.socket?.off('eta_updated');
     this.socket?.off('shipment_assigned');
+    this.socket?.off('driver_location_ack');
+    this.socket?.off('driver_location_error');
   }
 
   getSocket() {

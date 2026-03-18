@@ -8,13 +8,13 @@ const {
   updateShipment,
   deleteShipment,
 } = require('../controllers/shipment.Controller');
-const { protect } = require('../middleware/auth.middleware');
+const { protect, admin } = require('../middleware/auth.middleware');
 
 router.use(protect);
 
 router.route('/')
   .get(getShipments)
-  .post(createShipment);
+  .post(admin, createShipment);
 
 router.route('/:id')
   .get(getShipment)

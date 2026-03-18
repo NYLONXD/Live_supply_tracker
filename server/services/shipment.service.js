@@ -7,18 +7,42 @@ const logger = require('../utils/logger.utils');
 class ShipmentService {
 
   async createShipment(data, userId) {
-    const { from, to, fromLat, fromLng, toLat, toLng, notes, vehicleType, weather } = data;
+    const {
+      from,
+      to,
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+      notes,
+      vehicleType,
+      weather,
+      customerName,
+      customerPhone,
+      distance,
+      estimatedMinutes,
+      routeGeometry,
+    } = data;
 
-    // Get real road distance + AI-adjusted ETA
-    const etaData = await aiService.calculateETA(
-      { lat: parseFloat(fromLat), lng: parseFloat(fromLng) },
-      { lat: parseFloat(toLat),   lng: parseFloat(toLng)   },
-      { vehicleType: vehicleType || 'Car', weather: weather || 'Clear' }
-    );
+    let etaData = {
+      estimatedMinutes,
+      distance,
+      routeGeometry,
+    };
+
+    if (!etaData.estimatedMinutes || !etaData.distance || !etaData.routeGeometry?.length) {
+      etaData = await aiService.calculateETA(
+        { lat: parseFloat(fromLat), lng: parseFloat(fromLng) },
+        { lat: parseFloat(toLat),   lng: parseFloat(toLng)   },
+        { vehicleType: vehicleType || 'Car', weather: weather || 'Clear' }
+      );
+    }
 
     const shipment = await Shipment.create({
       from,
       to,
+      customerName,
+      customerPhone,
       pickup:   { address: from, lat: parseFloat(fromLat), lng: parseFloat(fromLng) },
       delivery: { address: to,   lat: parseFloat(toLat),   lng: parseFloat(toLng)   },
       createdBy: userId,

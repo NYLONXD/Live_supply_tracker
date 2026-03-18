@@ -20,6 +20,12 @@ const adminRoutes    = require('./routes/admin.routes');
 const driverRoutes   = require('./routes/driver.routes');
 const trackingRoutes = require('./routes/tracking.routes');
 const aiRoutes       = require('./routes/ai.routes');
+const User = require('./models/user.models');
+const Shipment = require('./models/Shipment.models');
+const aiService = require('./services/aiIntegration.service');
+const { getTokenFromCookieHeader } = require('./middleware/auth.middleware');
+const jwt = require('jsonwebtoken');
+const { cache } = require('./config/redis.config');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +34,7 @@ const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -84,9 +91,90 @@ io.on('connection', (socket) => {
     socket.leave(`shipment_${trackingNumber}`);
   });
 
+  socket.on('driver_location_update', async (payload = {}) => {
+    try {
+      if (!socket.user || socket.user.role !== 'driver') {
+        socket.emit('driver_location_error', { message: 'Driver authentication required' });
+        return;
+      }
+
+      const { shipmentId, lat, lng } = payload;
+
+      if (!shipmentId || lat === undefined || lng === undefined) {
+        socket.emit('driver_location_error', { message: 'shipmentId, lat, and lng are required' });
+        return;
+      }
+
+      const shipment = await Shipment.findOne({ _id: shipmentId, assignedDriver: socket.user._id });
+      if (!shipment) {
+        socket.emit('driver_location_error', { message: 'Shipment not found or not assigned to you' });
+        return;
+      }
+
+      await shipment.updateLocation(lat, lng);
+
+      const newETA = await aiService.updateETA(
+        { lat, lng },
+        { lat: shipment.delivery.lat, lng: shipment.delivery.lng }
+      );
+
+      await shipment.updateETA(newETA.estimatedMinutes);
+      await cache.delPattern('shipments:*');
+      await cache.del(`track:${shipment.trackingNumber}`);
+
+      io.to(`shipment_${shipment.trackingNumber}`).emit('location_updated', {
+        shipmentId: shipment._id.toString(),
+        trackingNumber: shipment.trackingNumber,
+        location: { lat, lng },
+        timestamp: new Date(),
+      });
+
+      io.to(`shipment_${shipment.trackingNumber}`).emit('eta_updated', {
+        shipmentId: shipment._id.toString(),
+        trackingNumber: shipment.trackingNumber,
+        newETA: newETA.estimatedMinutes,
+        timestamp: new Date(),
+      });
+
+      socket.emit('driver_location_ack', {
+        shipmentId: shipment._id.toString(),
+        currentETA: newETA.estimatedMinutes,
+        remainingDistance: newETA.distance,
+      });
+    } catch (error) {
+      logger.error(`Socket driver location update failed: ${error.message}`);
+      socket.emit('driver_location_error', { message: 'Failed to update live location' });
+    }
+  });
+
   socket.on('disconnect', () => {
     logger.info(`Socket disconnected: ${socket.id}`);
   });
+});
+
+io.use(async (socket, next) => {
+  try {
+    const token = getTokenFromCookieHeader(socket.handshake.headers.cookie || '');
+
+    if (!token) {
+      socket.user = null;
+      return next();
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password -__v');
+
+    if (!user || !user.isActive) {
+      socket.user = null;
+      return next();
+    }
+
+    socket.user = user;
+    next();
+  } catch (error) {
+    socket.user = null;
+    next();
+  }
 });
 
 const PORT = process.env.PORT || 5000;

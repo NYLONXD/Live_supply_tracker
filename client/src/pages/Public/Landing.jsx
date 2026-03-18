@@ -30,9 +30,9 @@ export default function Landing() {
             <Link to="/login" className="text-sm font-medium text-zinc-600 hover:text-black transition-colors">
               Log In
             </Link>
-            <Link to="/signup">
+            <Link to="/track">
               <Button variant="primary" size="sm" className="hidden sm:inline-flex shadow-xl shadow-black/5">
-                Get Started
+                Track Shipment
               </Button>
             </Link>
           </div>
@@ -59,9 +59,9 @@ export default function Landing() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link to="/signup">
+              <Link to="/track">
                 <Button size="lg" className="px-8 w-full sm:w-auto h-12 text-base shadow-lg shadow-black/10 hover:shadow-xl transition-all">
-                  Start Tracking <ArrowRight size={18} className="ml-2" />
+                  Track a Shipment <ArrowRight size={18} className="ml-2" />
                 </Button>
               </Link>
               <a href="#process">
@@ -200,11 +200,11 @@ export default function Landing() {
                   Manage users, analyze performance, and secure your data in one unified dashboard.
                 </p>
                 <div className="flex gap-3">
-                  <Link to="/signup">
-                    <Button variant="primary" className="h-10 text-sm">Start Free Trial</Button>
+                  <Link to="/login">
+                    <Button variant="primary" className="h-10 text-sm">Admin Login</Button>
                   </Link>
-                  <Link to="/contact">
-                    <Button variant="outline" className="h-10 text-sm">Schedule Demo</Button>
+                  <Link to="/track">
+                    <Button variant="outline" className="h-10 text-sm">Track Shipment</Button>
                   </Link>
                 </div>
               </div>

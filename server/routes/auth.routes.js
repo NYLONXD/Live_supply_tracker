@@ -7,6 +7,7 @@ const {
   updatePreferences,
   forgotPassword,
   resetPassword,
+  logout,
 } = require('../controllers/auth.Controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authLimiter } = require('../middleware/rateLimiter.middleware');
@@ -20,5 +21,6 @@ router.post('/reset-password/:token', authLimiter, resetPassword); // ✅ Fixed:
 // ─── Private ──────────────────────────────────────────────────────────────────
 router.get('/me',          protect, getMe);
 router.put('/preferences', protect, updatePreferences);
+router.post('/logout',     protect, logout);
 
 module.exports = router;

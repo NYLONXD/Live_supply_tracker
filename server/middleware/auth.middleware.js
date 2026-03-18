@@ -2,13 +2,36 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 
-// ─── Protect ──────────────────────────────────────────────────────────────────
-exports.protect = asyncHandler(async (req, res, next) => {
-  let token;
+const getTokenFromCookieHeader = (cookieHeader = '') => {
+  const cookies = cookieHeader
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  for (const cookie of cookies) {
+    const [name, ...valueParts] = cookie.split('=');
+    if (name === 'token') {
+      return decodeURIComponent(valueParts.join('='));
+    }
+  }
+
+  return null;
+};
+
+const resolveToken = (req) => {
+  const cookieToken = getTokenFromCookieHeader(req.headers.cookie || '');
+  if (cookieToken) return cookieToken;
 
   if (req.headers.authorization?.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+    return req.headers.authorization.split(' ')[1];
   }
+
+  return null;
+};
+
+// ─── Protect ──────────────────────────────────────────────────────────────────
+exports.protect = asyncHandler(async (req, res, next) => {
+  const token = resolveToken(req);
 
   if (!token) {
     return res.status(401).json({ message: 'Not authorized, no token' });
@@ -54,3 +77,6 @@ exports.generateToken = (id) => {
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
 };
+
+exports.getTokenFromCookieHeader = getTokenFromCookieHeader;
+exports.resolveToken = resolveToken;

@@ -1,19 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Package, Users, Truck, BarChart3, Menu, X, LogOut, Plus, Navigation, ChevronRight
+  LayoutDashboard, Package, Users, Truck, BarChart3, Menu, LogOut, Plus, Navigation, ChevronRight
 } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 
 const getMenuItems = (role) => {
   const menus = {
-    user: [
-      { icon: LayoutDashboard, label: 'Overview', path: '/user/dashboard' },
-      { icon: Plus, label: 'New Shipment', path: '/user/create' },
-      { icon: Package, label: 'History', path: '/user/shipments' },
-    ],
     admin: [
       { icon: LayoutDashboard, label: 'Overview', path: '/admin/dashboard' },
+      { icon: Plus, label: 'Create Shipment', path: '/admin/shipments/create' },
       { icon: Package, label: 'Shipments', path: '/admin/shipments' },
       { icon: Users, label: 'User Mgmt', path: '/admin/users' },
       { icon: Truck, label: 'Fleet', path: '/admin/drivers' },
@@ -25,7 +21,7 @@ const getMenuItems = (role) => {
       { icon: Navigation, label: 'Route', path: '/driver/navigate' },
     ],
   };
-  return menus[role] || menus.user;
+  return menus[role] || [];
 };
 
 export default function DashboardLayout({ children, title }) {
