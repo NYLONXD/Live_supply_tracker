@@ -1,3 +1,4 @@
+// server/models/Task.models.js
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
@@ -32,21 +33,17 @@ const taskSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
 
-// Update the updatedAt timestamp before saving
-taskSchema.pre('save', function (next) {
-  this.updatedAt = Date.now();
-  next();
-});
+  // ── Multi-tenancy ──────────────────────────────────────────────────────────
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
+  },
+
+}, { timestamps: true });
+
+taskSchema.index({ organizationId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Task', taskSchema);
-

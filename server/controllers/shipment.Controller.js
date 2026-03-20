@@ -4,7 +4,7 @@ const asyncHandler = require('../utils/asyncHandle.utils');
 
 exports.getShipments = asyncHandler(async (req, res) => {
   const filters = req.query.status ? { status: req.query.status } : {};
-  const shipments = await shipmentService.getShipments(req.user._id, req.user.role, filters);
+  const shipments = await shipmentService.getShipments(req.user._id, req.user.role, filters, req.organizationId);
   res.status(200).json(shipments);
 });
 
@@ -14,7 +14,7 @@ exports.getShipment = asyncHandler(async (req, res) => {
 });
 
 exports.createShipment = asyncHandler(async (req, res) => {
-  const shipment = await shipmentService.createShipment(req.body, req.user._id);
+  const shipment = await shipmentService.createShipment(req.body, req.user._id, req.organizationId);
   res.status(201).json(shipment);
 });
 

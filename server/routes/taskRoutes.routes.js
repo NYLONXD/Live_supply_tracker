@@ -11,9 +11,11 @@ const {
 } = require('../controllers/task.Controller');
 const { protect, admin } = require('../middleware/auth.middleware');
 const { createTaskRules, updateTaskRules, validate } = require('../middleware/validation.middleware');
+const { attachTenant } = require('../middleware/tenant.middleware');
 
 // All routes require authentication and admin privileges
 router.use(protect);
+router.use(attachTenant);
 router.use(admin);
 
 // Get all tasks

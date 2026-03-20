@@ -11,7 +11,7 @@ const connectDB = require('./config/db.config');
 const logger = require('./utils/logger.utils');
 const errorHandler = require('./middleware/errorHandle.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
-
+const organizationRoutes = require('./routes/organization.routes');
 const authRoutes     = require('./routes/auth.routes');
 const shipmentRoutes = require('./routes/shipments.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
@@ -74,6 +74,7 @@ app.use('/api/admin',     adminRoutes);
 app.use('/api/driver',    driverRoutes);
 app.use('/api/track',     trackingRoutes);
 app.use('/api/ai',        aiRoutes);
+app.use('/api/organizations', organizationRoutes);
 
 app.use(errorHandler);
 

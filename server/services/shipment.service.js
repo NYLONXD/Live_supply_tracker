@@ -6,7 +6,7 @@ const logger = require('../utils/logger.utils');
 
 class ShipmentService {
 
-  async createShipment(data, userId) {
+  async createShipment(data, userId, organizationId) {
     const {
       from,
       to,
@@ -43,6 +43,7 @@ class ShipmentService {
       to,
       customerName,
       customerPhone,
+      organizationId,
       pickup:   { address: from, lat: parseFloat(fromLat), lng: parseFloat(fromLng) },
       delivery: { address: to,   lat: parseFloat(toLat),   lng: parseFloat(toLng)   },
       createdBy: userId,
@@ -58,8 +59,8 @@ class ShipmentService {
     return shipment;
   }
 
-  async getShipments(userId, role, filters = {}) {
-    const query = {};
+  async getShipments(userId, role, filters, organizationId) {
+    const query = {organizationId};
 
     if (role === 'user') {
       query.createdBy = userId;

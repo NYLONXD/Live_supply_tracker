@@ -1,3 +1,4 @@
+// server/models/user.models.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -33,7 +34,16 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'driver', 'admin'],
     default: 'user',
   },
-  
+
+  // ── Multi-tenancy ──────────────────────────────────────────────────────────
+  // Every user belongs to exactly one organization.
+  // Admins create their org on signup; drivers/users get assigned when promoted.
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    index: true,
+  },
+
   // Driver-specific fields (only used when role = 'driver')
   vehicleInfo: {
     type: String,
@@ -45,12 +55,12 @@ const userSchema = new mongoose.Schema({
   },
   promotedToDriverBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Admin who promoted this user to driver
+    ref: 'User',
   },
   promotedToDriverAt: {
     type: Date,
   },
-  
+
   isActive: {
     type: Boolean,
     default: true,
@@ -58,8 +68,8 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
   },
-  resetPasswordToken : {type:String,select:false},
-  resetPasswordExpire : {type:Date,select:false},
+  resetPasswordToken:  { type: String, select: false },
+  resetPasswordExpire: { type: Date,   select: false },
   preferences: {
     notifications: {
       type: Boolean,
@@ -76,16 +86,8 @@ const userSchema = new mongoose.Schema({
 });
 
 // Methods
-userSchema.methods.isAdmin = function() {
-  return this.role === 'admin';
-};
-
-userSchema.methods.isDriver = function() {
-  return this.role === 'driver';
-};
-
-userSchema.methods.isUser = function() {
-  return this.role === 'user';
-};
+userSchema.methods.isAdmin  = function () { return this.role === 'admin';  };
+userSchema.methods.isDriver = function () { return this.role === 'driver'; };
+userSchema.methods.isUser   = function () { return this.role === 'user';   };
 
 module.exports = mongoose.model('User', userSchema);

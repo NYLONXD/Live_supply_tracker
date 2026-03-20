@@ -21,17 +21,24 @@ const shipmentSchema = new mongoose.Schema({
     trim: true,
   },
 
-  // Coordinates — single source of truth
+  // Coordinates
   pickup: {
     address: String,
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
   },
-
   delivery: {
     address: String,
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
+  },
+
+  // ── Multi-tenancy ──────────────────────────────────────────────────────────
+  organizationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true,
   },
 
   // Users
@@ -41,7 +48,6 @@ const shipmentSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-
   assignedDriver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -56,36 +62,30 @@ const shipmentSchema = new mongoose.Schema({
     index: true,
   },
 
-  // ETA — single source of truth (minutes)
-  estimatedMinutes: Number,  // AI-predicted total ETA at creation
-  currentETA: Number,        // Recalculated as driver moves
-  distance: Number,          // Real road distance in km (from Mapbox)
-
-  // Route polyline from Mapbox — [lng, lat] array
-  routeGeometry: {
-    type: [[Number]],
-  },
+  // ETA
+  estimatedMinutes: Number,
+  currentETA:       Number,
+  distance:         Number,
+  routeGeometry:    { type: [[Number]] },
 
   // Live tracking
   currentLocation: {
-    lat: Number,
-    lng: Number,
+    lat:         Number,
+    lng:         Number,
     lastUpdated: Date,
   },
 
-  // Notes
-  notes: String,
+  notes:       String,
   driverNotes: String,
-
-  // Timestamps
-  pickedUpAt: Date,
+  pickedUpAt:  Date,
   deliveredAt: Date,
 
 }, { timestamps: true });
 
-// Indexes
-shipmentSchema.index({ createdBy: 1, createdAt: -1 });
-shipmentSchema.index({ assignedDriver: 1, status: 1 });
+// Compound indexes for fast tenant-scoped queries
+shipmentSchema.index({ organizationId: 1, createdAt: -1 });
+shipmentSchema.index({ organizationId: 1, status: 1 });
+shipmentSchema.index({ organizationId: 1, assignedDriver: 1 });
 
 // Auto-generate tracking number
 shipmentSchema.pre('save', function (next) {

@@ -1,211 +1,140 @@
-const User = require('../models/user.models');
+// server/controllers/admin.Controller.js
+//
+// Every query in this file is scoped to req.organizationId.
+// This is the key line in every function:
+//   Model.find({ organizationId: req.organizationId, ... })
+// That single filter ensures Shop A's admin can NEVER see Shop B's data.
+
+const User     = require('../models/user.models');
 const Shipment = require('../models/Shipment.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
-const logger = require('../utils/logger.utils');
+const logger   = require('../utils/logger.utils');
 
-// @desc    Get all users (for promoting to driver)
-// @route   GET /api/admin/users
-// @access  Private/Admin
+// ─── Get all users in this org ────────────────────────────────────────────────
 exports.getAllUsers = asyncHandler(async (req, res) => {
-  const { role } = req.query;
-  
-  const query = {};
-  if (role) {
-    query.role = role;
-  }
-  
-  const users = await User.find(query)
+  const users = await User.find({ organizationId: req.organizationId })
     .select('-password')
     .sort({ createdAt: -1 });
-
-  res.status(200).json(users);
+  res.json(users);
 });
 
-// @desc    Promote user to driver
-// @route   POST /api/admin/users/:id/promote-driver
-// @access  Private/Admin
+// ─── Get all drivers in this org ──────────────────────────────────────────────
+exports.getAllDrivers = asyncHandler(async (req, res) => {
+  const drivers = await User.find({
+    organizationId: req.organizationId,
+    role: 'driver',
+  })
+    .select('-password')
+    .sort({ createdAt: -1 });
+  res.json(drivers);
+});
+
+// ─── Promote user to driver ───────────────────────────────────────────────────
 exports.promoteToDriver = asyncHandler(async (req, res) => {
-  const { vehicleInfo, vehicleNumber, phone } = req.body;
+  const { vehicleInfo, vehicleNumber } = req.body;
 
-  const user = await User.findById(req.params.id);
+  // Ensure the user belongs to THIS org
+  const user = await User.findOne({
+    _id:            req.params.id,
+    organizationId: req.organizationId,
+  });
 
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
+  if (!user)
+    return res.status(404).json({ message: 'User not found in your organization' });
 
-  if (user.role === 'admin') {
-    return res.status(400).json({ message: 'Cannot promote admin to driver' });
-  }
-
-  if (user.role === 'driver') {
+  if (user.role === 'driver')
     return res.status(400).json({ message: 'User is already a driver' });
-  }
 
-  // Promote to driver
-  user.role = 'driver';
-  user.vehicleInfo = vehicleInfo;
-  user.vehicleNumber = vehicleNumber;
-  user.phone = phone || user.phone;
+  user.role               = 'driver';
+  user.vehicleInfo        = vehicleInfo;
+  user.vehicleNumber      = vehicleNumber;
   user.promotedToDriverBy = req.user._id;
   user.promotedToDriverAt = new Date();
-
   await user.save();
 
-  logger.info(`User ${user.email} promoted to driver by admin ${req.user.email}`);
-
-  res.status(200).json({
-    _id: user._id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    vehicleInfo: user.vehicleInfo,
-    vehicleNumber: user.vehicleNumber,
-    phone: user.phone,
-  });
+  logger.info(`User ${user.email} promoted to driver by ${req.user.email} [org: ${req.organizationId}]`);
+  res.json({ message: 'User promoted to driver', user });
 });
 
-// @desc    Demote driver to user
-// @route   POST /api/admin/users/:id/demote-driver
-// @access  Private/Admin
+// ─── Demote driver back to user ───────────────────────────────────────────────
 exports.demoteDriver = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  if (user.role !== 'driver') {
-    return res.status(400).json({ message: 'User is not a driver' });
-  }
-
-  // Check if driver has active shipments
-  const activeShipments = await Shipment.countDocuments({
-    assignedDriver: user._id,
-    status: { $in: ['assigned', 'picked_up', 'in_transit'] }
+  const user = await User.findOne({
+    _id:            req.params.id,
+    organizationId: req.organizationId,
   });
 
-  if (activeShipments > 0) {
-    return res.status(400).json({ 
-      message: `Cannot demote driver with ${activeShipments} active shipment(s)` 
-    });
-  }
+  if (!user)
+    return res.status(404).json({ message: 'User not found in your organization' });
 
-  // Demote to user
-  user.role = 'user';
+  if (user.role !== 'driver')
+    return res.status(400).json({ message: 'User is not a driver' });
 
+  user.role          = 'user';
+  user.vehicleInfo   = undefined;
+  user.vehicleNumber = undefined;
   await user.save();
 
-  logger.info(`Driver ${user.email} demoted to user by admin ${req.user.email}`);
-
-  res.status(200).json({
-    _id: user._id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    message: 'Driver demoted to user successfully',
-  });
+  res.json({ message: 'Driver demoted to user', user });
 });
 
-// @desc    Get all drivers
-// @route   GET /api/admin/drivers
-// @access  Private/Admin
-exports.getAllDrivers = asyncHandler(async (req, res) => {
-  const drivers = await User.find({ role: 'driver' })
-    .select('-password')
-    .populate('promotedToDriverBy', 'displayName email')
-    .sort({ promotedToDriverAt: -1 });
-
-  res.status(200).json(drivers);
-});
-
-// @desc    Update driver details
-// @route   PUT /api/admin/drivers/:id
-// @access  Private/Admin
-exports.updateDriver = asyncHandler(async (req, res) => {
-  const { phone, vehicleInfo, vehicleNumber } = req.body;
-
-  const driver = await User.findById(req.params.id);
-
-  if (!driver) {
-    return res.status(404).json({ message: 'Driver not found' });
-  }
-
-  if (driver.role !== 'driver') {
-    return res.status(400).json({ message: 'User is not a driver' });
-  }
-
-  if (phone !== undefined) driver.phone = phone;
-  if (vehicleInfo !== undefined) driver.vehicleInfo = vehicleInfo;
-  if (vehicleNumber !== undefined) driver.vehicleNumber = vehicleNumber;
-
-  await driver.save();
-
-  res.status(200).json(driver);
-});
-
-// @desc    Toggle user active status
-// @route   PATCH /api/admin/users/:id/toggle
-// @access  Private/Admin
+// ─── Toggle user active/inactive ─────────────────────────────────────────────
 exports.toggleUserStatus = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  const user = await User.findOne({
+    _id:            req.params.id,
+    organizationId: req.organizationId,
+  });
 
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  if (user.role === 'admin') {
-    return res.status(400).json({ message: 'Cannot deactivate admin' });
-  }
+  if (!user)
+    return res.status(404).json({ message: 'User not found in your organization' });
 
   user.isActive = !user.isActive;
   await user.save();
 
-  logger.info(`User ${user.email} ${user.isActive ? 'activated' : 'deactivated'}`);
-
-  res.status(200).json({
-    _id: user._id,
-    email: user.email,
-    isActive: user.isActive,
-  });
+  res.json({ message: `User ${user.isActive ? 'activated' : 'deactivated'}`, user });
 });
 
-// @desc    Assign driver to shipment
-// @route   POST /api/admin/shipments/:id/assign
-// @access  Private/Admin
+// ─── Update driver info ───────────────────────────────────────────────────────
+exports.updateDriver = asyncHandler(async (req, res) => {
+  const { vehicleInfo, vehicleNumber, displayName, phone } = req.body;
+
+  const user = await User.findOne({
+    _id:            req.params.id,
+    organizationId: req.organizationId,
+    role:           'driver',
+  });
+
+  if (!user)
+    return res.status(404).json({ message: 'Driver not found in your organization' });
+
+  if (vehicleInfo)   user.vehicleInfo   = vehicleInfo;
+  if (vehicleNumber) user.vehicleNumber = vehicleNumber;
+  if (displayName)   user.displayName   = displayName;
+  if (phone)         user.phone         = phone;
+
+  await user.save();
+  res.json(user);
+});
+
+// ─── Assign driver to shipment ────────────────────────────────────────────────
 exports.assignDriverToShipment = asyncHandler(async (req, res) => {
   const { driverId } = req.body;
 
-  if (!driverId) {
-    return res.status(400).json({ message: 'Driver ID is required' });
-  }
+  // Both the shipment and the driver must belong to this org
+  const [shipment, driver] = await Promise.all([
+    Shipment.findOne({ _id: req.params.id, organizationId: req.organizationId }),
+    User.findOne({ _id: driverId, organizationId: req.organizationId, role: 'driver' }),
+  ]);
 
-  const shipment = await Shipment.findById(req.params.id);
-  if (!shipment) {
-    return res.status(404).json({ message: 'Shipment not found' });
-  }
+  if (!shipment)
+    return res.status(404).json({ message: 'Shipment not found in your organization' });
 
-  const driver = await User.findOne({ _id: driverId, role: 'driver', isActive: true });
-  if (!driver) {
-    return res.status(404).json({ message: 'Active driver not found' });
-  }
+  if (!driver)
+    return res.status(404).json({ message: 'Driver not found in your organization' });
 
   shipment.assignedDriver = driverId;
-  shipment.status = 'assigned';
+  shipment.status         = 'assigned';
   await shipment.save();
 
-  await shipment.populate('assignedDriver', 'displayName email phone vehicleInfo');
-
-  // Emit socket event
-  const io = req.app.get('io');
-  if (io) {
-    io.emit('shipment_assigned', {
-      shipmentId: shipment._id,
-      trackingNumber: shipment.trackingNumber,
-      driverId: driverId,
-      driverName: shipment.assignedDriver.displayName,
-    });
-  }
-
-  logger.info(`Shipment ${shipment.trackingNumber} assigned to driver ${driver.email}`);
-  res.status(200).json(shipment);
+  const populated = await shipment.populate('assignedDriver', 'displayName phone vehicleInfo vehicleNumber');
+  res.json(populated);
 });

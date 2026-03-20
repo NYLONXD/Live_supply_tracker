@@ -1,5 +1,6 @@
+// server/routes/admin.routes.js
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const {
   getAllUsers,
   promoteToDriver,
@@ -9,23 +10,25 @@ const {
   toggleUserStatus,
   assignDriverToShipment,
 } = require('../controllers/admin.Controller');
-const { protect, admin } = require('../middleware/auth.middleware');
+const { protect, admin }   = require('../middleware/auth.middleware');
+const { attachTenant }     = require('../middleware/tenant.middleware');
 
-// All routes require authentication and admin role
+// All admin routes require: valid JWT  →  belongs to an org  →  is an admin
 router.use(protect);
+router.use(attachTenant);
 router.use(admin);
 
 // User management
-router.get('/users', getAllUsers);
+router.get('/users',                     getAllUsers);
 router.post('/users/:id/promote-driver', promoteToDriver);
-router.post('/users/:id/demote-driver', demoteDriver);
-router.patch('/users/:id/toggle', toggleUserStatus);
+router.post('/users/:id/demote-driver',  demoteDriver);
+router.patch('/users/:id/toggle',        toggleUserStatus);
 
 // Driver management
-router.get('/drivers', getAllDrivers);
-router.put('/drivers/:id', updateDriver);
+router.get('/drivers',       getAllDrivers);
+router.put('/drivers/:id',   updateDriver);
 
-// Assign driver to shipment
+// Shipment assignment
 router.post('/shipments/:id/assign', assignDriverToShipment);
 
 module.exports = router;

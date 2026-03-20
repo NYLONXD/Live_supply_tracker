@@ -9,8 +9,10 @@ const {
   deleteShipment,
 } = require('../controllers/shipment.Controller');
 const { protect, admin } = require('../middleware/auth.middleware');
+const { attachTenant } = require('../middleware/tenant.middleware');
 
 router.use(protect);
+router.use(attachTenant);
 
 router.route('/')
   .get(getShipments)
