@@ -1,40 +1,73 @@
+// client/src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './stores/authStore';
 
 // Public Pages
-import Landing from './pages/Public/Landing';
-import Login from './pages/Auth/Login';
-import Signup from './pages/Auth/Signup';
-import PublicTrack from './pages/Public/Track';
+import Landing          from './pages/Public/Landing';
+import PublicTrack      from './pages/Public/Track';
 
-import AdminDashboard from './pages/Admin/Dashboard';
-import AllShipments from './pages/Admin/AllShipments';
-import Users from './pages/Admin/Users';
-import Drivers from './pages/Admin/Drivers';
-import Analytics from './pages/Admin/Analytics';
+// Auth Pages
+import Login            from './pages/Auth/Login';
+import Signup           from './pages/Auth/Signup';
+import RegisterShop     from './pages/Auth/RegisterShop';
+import ForgetPassword   from './pages/Auth/ForgetPassword';
+import ResetPassword    from './pages/Auth/ResetPassword';
+
+// Admin Pages
+import AdminDashboard     from './pages/Admin/Dashboard';
+import AllShipments       from './pages/Admin/AllShipments';
+import Users              from './pages/Admin/Users';
+import Drivers            from './pages/Admin/Drivers';
+import Analytics          from './pages/Admin/Analytics';
 import AdminCreateShipment from './pages/Admin/CreateShipment';
 
-import DriverDashboard from './pages/Driver/Dashboard';
-import MyDeliveries from './pages/Driver/MyDeliveries';
-import Navigation from './pages/Driver/Navigation';
+// Driver Pages
+import DriverDashboard  from './pages/Driver/Dashboard';
+import MyDeliveries     from './pages/Driver/MyDeliveries';
+import Navigation       from './pages/Driver/Navigation';
 
-import ForgetPassword from './pages/Auth/ForgetPassword';
-import ResetPassword from './pages/Auth/ResetPassword';
-
-// Component logic remains the same
+// ─── Protected Route ─────────────────────────────────────────────────────────
+// Guards:
+//   1. Must be logged in
+//   2. Must have one of the allowedRoles
+//   3. admin / driver must have an organizationId — if not, send to /register-shop
+//      (this catches old accounts created before multi-tenancy, or any edge case
+//       where attachTenant would otherwise return 403)
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, initialized, loading } = useAuthStore();
-  if (!initialized || loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+
+  // Still bootstrapping — show a blank loader rather than redirecting early
+  if (!initialized || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Not logged in
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
+
+  // Wrong role
+  if (allowedRoles && !allowedRoles.includes(user.role))
+    return <Navigate to="/" replace />;
+
+  // Admin or driver without an org → redirect to shop registration
+  // This prevents a confusing 403 from the backend's attachTenant middleware
+  if (['admin', 'driver'].includes(user.role) && !user.organizationId)
+    return <Navigate to="/register-shop" replace />;
+
   return children;
 };
 
+// ─── App ─────────────────────────────────────────────────────────────────────
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
+  // Validate the JWT cookie on every cold load.
+  // checkAuth() calls /api/auth/me, normalizes the response, and sets the store.
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -61,31 +94,95 @@ function App() {
       />
 
       <Routes>
-        {/* NEW: Landing Page as Root */}
-        <Route path="/" element={<Landing />} />
-        
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/track" element={<PublicTrack />} />
-        <Route path="/track/:trackingNumber" element={<PublicTrack />} />
-        <Route path="/forgot-password" element={<ForgetPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        {/* ── Public ─────────────────────────────────────────────────────── */}
+        <Route path="/"                        element={<Landing />} />
+        <Route path="/track"                   element={<PublicTrack />} />
+        <Route path="/track/:trackingNumber"   element={<PublicTrack />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/shipments/create" element={<ProtectedRoute allowedRoles={['admin']}><AdminCreateShipment /></ProtectedRoute>} />
-        <Route path="/admin/shipments" element={<ProtectedRoute allowedRoles={['admin']}><AllShipments /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
-        <Route path="/admin/drivers" element={<ProtectedRoute allowedRoles={['admin']}><Drivers /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
+        {/* ── Auth ───────────────────────────────────────────────────────── */}
+        <Route path="/login"                   element={<Login />} />
+        <Route path="/signup"                  element={<Signup />} />
+        <Route path="/register-shop"           element={<RegisterShop />} />
+        <Route path="/forgot-password"         element={<ForgetPassword />} />
+        <Route path="/reset-password/:token"   element={<ResetPassword />} />
 
-        {/* Driver Routes */}
-        <Route path="/driver/dashboard" element={<ProtectedRoute allowedRoles={['driver']}><DriverDashboard /></ProtectedRoute>} />
-        <Route path="/driver/deliveries" element={<ProtectedRoute allowedRoles={['driver']}><MyDeliveries /></ProtectedRoute>} />
-        <Route path="/driver/navigate/:id" element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
-       
-        {/* Catch-all */}
+        {/* ── Admin ──────────────────────────────────────────────────────── */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/shipments/create"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminCreateShipment />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/shipments"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AllShipments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Users />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/drivers"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Drivers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Driver ─────────────────────────────────────────────────────── */}
+        <Route
+          path="/driver/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['driver']}>
+              <DriverDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/driver/deliveries"
+          element={
+            <ProtectedRoute allowedRoles={['driver']}>
+              <MyDeliveries />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/driver/navigate/:id"
+          element={
+            <ProtectedRoute allowedRoles={['driver']}>
+              <Navigation />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Catch-all ──────────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/track" replace />} />
       </Routes>
     </BrowserRouter>

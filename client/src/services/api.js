@@ -36,6 +36,7 @@ api.interceptors.response.use(
 export const authAPI = {
   login:          (data)        => api.post('/api/auth/login', data),
   register:       (data)        => api.post('/api/auth/register', data),
+  registerOrganization:(data)   => api.post('/api/organizations/register', data),
   getMe:          ()            => api.get('/api/auth/me'),
   forgotPassword: (data)        => api.post('/api/auth/forgot-password', data),
   resetPassword:  (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
@@ -88,6 +89,11 @@ export const tasksAPI = {
 // ─── AI APIs ──────────────────────────────────────────────────────────────────
 export const aiAPI = {
   previewETA: (data) => api.post('/api/ai/preview-eta', data),
+};
+
+export const organizationAPI = {
+  getMyOrg:    ()     => api.get('/api/organizations/me'),
+  updateMyOrg: (data) => api.put('/api/organizations/me', data),
 };
 
 export default api;
