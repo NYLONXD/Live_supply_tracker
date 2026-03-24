@@ -7,17 +7,18 @@ import Input from '../../components/common/Input';
 import useAuthStore from '../../stores/authStore';
 import api from '../../services/api';
 
+const EMAIL_REGEX = /^\S+@\S+\.\S+$/;
+const PHONE_REGEX = /^[0-9+\-\s]{7,20}$/;
+
 export default function JoinOrg() {
   const { token }   = useParams();
   const navigate    = useNavigate();
   const { setAuth } = useAuthStore();
 
-  // invite info fetched from the server
   const [invite,     setInvite]     = useState(null);
   const [invalid,    setInvalid]    = useState(false);
   const [checking,   setChecking]   = useState(true);
 
-  // form state
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState('');
   const [formData,   setFormData]   = useState({
@@ -28,18 +29,49 @@ export default function JoinOrg() {
     confirmPassword: '',
   });
 
-  // ── Validate the token on mount ────────────────────────────────────────────
+  // ── Validate token on mount ────────────────────────────────────────────────
   useEffect(() => {
-    api.get(`/api/invites/${token}/validate`)
-      .then(({ data }) => {
+    if (!token) {
+      setInvalid(true);
+      setChecking(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    let mounted = true;
+
+    const validate = async () => {
+      try {
+        const { data } = await api.get(`/api/invites/${token}/validate`, {
+          signal: controller.signal,
+        });
+
+        if (!mounted) return;
+
         setInvite(data);
-        // Pre-fill email if admin typed it when creating the invite
-        if (data.email) {
+
+        // Pre-seed formData.email so the controlled input is always consistent.
+        // The field will be disabled when invite.email is set, so the user
+        // can't change it — but the binding stays clean.
+        if (data?.email) {
           setFormData((prev) => ({ ...prev, email: data.email }));
         }
-      })
-      .catch(() => setInvalid(true))
-      .finally(() => setChecking(false));
+      } catch (err) {
+        if (!mounted) return;
+        if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+          setInvalid(true);
+        }
+      } finally {
+        if (mounted) setChecking(false);
+      }
+    };
+
+    validate();
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, [token]);
 
   const handleChange = (field) => (e) => {
@@ -49,10 +81,23 @@ export default function JoinOrg() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     setError('');
 
-    if (!formData.displayName.trim())
+    const fullName = formData.displayName.trim();
+    const email    = formData.email.trim();   // always from formData (pre-seeded or user-typed)
+    const phone    = formData.phone.trim();
+
+    // ── Client-side validation ─────────────────────────────────────────────
+    if (!fullName)
       return setError('Full name is required.');
+    if (!email)
+      return setError('Email is required.');
+    if (!EMAIL_REGEX.test(email))
+      return setError('Invalid email address.');
+    if (phone && !PHONE_REGEX.test(phone))
+      return setError('Invalid phone number.');
     if (formData.password.length < 6)
       return setError('Password must be at least 6 characters.');
     if (formData.password !== formData.confirmPassword)
@@ -60,22 +105,20 @@ export default function JoinOrg() {
 
     try {
       setSubmitting(true);
+
       const { data } = await api.post(`/api/invites/${token}/accept`, {
-        displayName: formData.displayName.trim(),
-        email:       formData.email.trim(),
-        phone:       formData.phone.trim() || undefined,
+        displayName: fullName,
+        email,             // server will verify this against invite.email if it was pre-set
+        phone:       phone || undefined,
         password:    formData.password,
       });
 
-      // setAuth normalizes organizationId shape
       setAuth(data);
 
-      // Redirect based on role
-      if (data.role === 'driver') {
-        navigate('/driver/dashboard');
-      } else {
-        navigate('/track');
-      }
+      navigate(
+        data?.role === 'driver' ? '/driver/dashboard' : '/track',
+        { replace: true }
+      );
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to join. Please try again.');
     } finally {
@@ -83,7 +126,7 @@ export default function JoinOrg() {
     }
   };
 
-  // ── Loading spinner while validating token ─────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -92,7 +135,7 @@ export default function JoinOrg() {
     );
   }
 
-  // ── Invalid / expired token screen ────────────────────────────────────────
+  // ── Invalid / expired ──────────────────────────────────────────────────────
   if (invalid) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
@@ -102,7 +145,7 @@ export default function JoinOrg() {
           </div>
           <h1 className="text-xl font-bold mb-2 text-black">Invalid invite link</h1>
           <p className="text-zinc-500 text-sm mb-6">
-            This link has expired or has already been used.
+            This link has expired, is invalid, or has already been used.
             Ask your admin to send a new invite.
           </p>
           <Link to="/login">
@@ -113,7 +156,7 @@ export default function JoinOrg() {
     );
   }
 
-  // ── Main registration form ─────────────────────────────────────────────────
+  // ── Join form ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
       <div className="w-full max-w-md bg-white border border-zinc-200 shadow-2xl shadow-zinc-200/50 p-8 md:p-10 relative overflow-hidden">
@@ -131,11 +174,13 @@ export default function JoinOrg() {
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-black mb-1">
-            Join {invite.organization}
+            Join {invite?.organization || 'Organization'}
           </h1>
           <p className="text-zinc-500 text-sm">
             You'll be added as a{' '}
-            <span className="font-semibold text-black capitalize">{invite.role}</span>.
+            <span className="font-semibold text-black capitalize">
+              {invite?.role || 'member'}
+            </span>.
           </p>
         </div>
 
@@ -163,10 +208,9 @@ export default function JoinOrg() {
             type="email"
             icon={Mail}
             placeholder="you@example.com"
-            value={formData.email}
+            value={formData.email}             // ✅ always from formData — consistent binding
             onChange={handleChange('email')}
-            // Lock the field if admin pre-filled the email
-            disabled={Boolean(invite.email)}
+            disabled={Boolean(invite?.email)}  // locked when admin pre-filled it
             required
           />
 
@@ -199,7 +243,7 @@ export default function JoinOrg() {
           />
 
           <Button type="submit" loading={submitting} className="w-full mt-2">
-            Join {invite.organization}
+            Join {invite?.organization || 'Organization'}
           </Button>
         </form>
 
