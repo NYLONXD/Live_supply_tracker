@@ -20,6 +20,7 @@ const adminRoutes    = require('./routes/admin.routes');
 const driverRoutes   = require('./routes/driver.routes');
 const trackingRoutes = require('./routes/tracking.routes');
 const aiRoutes       = require('./routes/ai.routes');
+const inviteRoutes = require('./routes/invite.route');
 const User = require('./models/user.models');
 const Shipment = require('./models/Shipment.models');
 const aiService = require('./services/aiIntegration.service');
@@ -75,6 +76,7 @@ app.use('/api/driver',    driverRoutes);
 app.use('/api/track',     trackingRoutes);
 app.use('/api/ai',        aiRoutes);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/invites', inviteRoutes);
 
 app.use(errorHandler);
 

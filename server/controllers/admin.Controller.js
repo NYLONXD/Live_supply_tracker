@@ -1,33 +1,19 @@
 // server/controllers/admin.Controller.js
-//
-// Multi-tenancy rule: every SHIPMENT query is scoped to req.organizationId.
-// USER queries are more nuanced — see comments on each function below.
-
 const User     = require('../models/user.models');
 const Shipment = require('../models/Shipment.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const logger   = require('../utils/logger.utils');
 
-// ─── Get all users ────────────────────────────────────────────────────────────
-// Shows:
-//   (a) users already belonging to this org, AND
-//   (b) users with NO org yet (they self-registered and can be promoted)
-// Never shows users who belong to a DIFFERENT org, and never shows other admins.
 exports.getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find({
-    $or: [
-      { organizationId: req.organizationId },   // already in this org
-      { organizationId: { $exists: false } },    // registered before org existed
-      { organizationId: null },                  // explicitly null
-    ],
-    role: { $ne: 'admin' },                      // never expose other admins
+    organizationId: req.organizationId,
+    role: { $ne: 'admin' },
   })
     .select('-password')
     .sort({ createdAt: -1 });
 
   res.json(users);
 });
-
 // ─── Get all drivers in this org ──────────────────────────────────────────────
 // Strictly org-scoped — drivers are always linked to an org after promotion.
 exports.getAllDrivers = asyncHandler(async (req, res) => {
@@ -42,9 +28,6 @@ exports.getAllDrivers = asyncHandler(async (req, res) => {
 });
 
 // ─── Promote user → driver ────────────────────────────────────────────────────
-// The target user may have NO organizationId yet (self-registered).
-// We find by _id only, then ASSIGN the org during promotion.
-// This is the only way a regular user gets linked to an org.
 exports.promoteToDriver = asyncHandler(async (req, res) => {
   const { vehicleInfo, vehicleNumber } = req.body;
 

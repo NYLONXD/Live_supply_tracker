@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,700&display=swap'); */
+
 
 @theme {
   --color-brand-black: #000000;

@@ -63,6 +63,19 @@ export const adminAPI = {
   toggleUserStatus:(userId)                 => api.patch(`/api/admin/users/${userId}/toggle`),
 };
 
+export const inviteAPI = {
+  // Admin: create a new invite link
+  create:   (data)  => api.post('/api/invites', data),
+  // Admin: list all invites for their org
+  getAll:   ()      => api.get('/api/invites'),
+  // Admin: revoke a pending invite
+  revoke:   (token) => api.delete(`/api/invites/${token}`),
+  // Public: validate a token before showing the join form
+  validate: (token) => api.get(`/api/invites/${token}/validate`),
+  // Public: accept an invite and create the account
+  accept:   (token, data) => api.post(`/api/invites/${token}/accept`, data),
+};
+
 // ─── Driver APIs ──────────────────────────────────────────────────────────────
 export const driverAPI = {
   getMyShipments: (params)              => api.get('/api/driver/shipments', { params }),

@@ -10,7 +10,7 @@ import PublicTrack      from './pages/Public/Track';
 
 // Auth Pages
 import Login            from './pages/Auth/Login';
-import Signup           from './pages/Auth/Signup';
+import Signup           from './pages/Auth/RegisterShop';
 import RegisterShop     from './pages/Auth/RegisterShop';
 import ForgetPassword   from './pages/Auth/ForgetPassword';
 import ResetPassword    from './pages/Auth/ResetPassword';
@@ -22,6 +22,7 @@ import Users              from './pages/Admin/Users';
 import Drivers            from './pages/Admin/Drivers';
 import Analytics          from './pages/Admin/Analytics';
 import AdminCreateShipment from './pages/Admin/CreateShipment';
+import JoinOrg             from './pages/Auth/JoinOrg';
 
 // Driver Pages
 import DriverDashboard  from './pages/Driver/Dashboard';
@@ -105,6 +106,8 @@ function App() {
         <Route path="/register-shop"           element={<RegisterShop />} />
         <Route path="/forgot-password"         element={<ForgetPassword />} />
         <Route path="/reset-password/:token"   element={<ResetPassword />} />
+        <Route path="/join/:token" element={<JoinOrg />} />
+
 
         {/* ── Admin ──────────────────────────────────────────────────────── */}
         <Route
