@@ -3,19 +3,19 @@ import { create } from 'zustand';
 import { authAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
-// /api/auth/login and /api/organizations/register return  { organizationId: "string" }
-// /api/auth/me returns                                    { organization: { _id, name } }
-// This function flattens both shapes into a consistent object that always
-// has  user.organizationId  as a plain string (or null).
+// ─── Normalize user shape ─────────────────────────────────────────────────────
+// /api/auth/login + /api/organizations/register → { organizationId: "string" }
+// /api/auth/me                                  → { organization: { _id, name } }
+// This flattens both shapes and always preserves isEmailVerified.
 const normalize = (data) => ({
   ...data,
-  organizationId: data.organization?._id ?? data.organizationId ?? null,
+  organizationId:  data.organization?._id ?? data.organizationId ?? null,
+  isEmailVerified: data.isEmailVerified ?? undefined,
 });
 
-const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem('user')) || null,
-  loading: false,
+const useAuthStore = create((set, get) => ({
+  user:        JSON.parse(localStorage.getItem('user')) || null,
+  loading:     false,
   initialized: false,
 
   // ─── Login ────────────────────────────────────────────────────────────────
@@ -23,8 +23,6 @@ const useAuthStore = create((set) => ({
     set({ loading: true });
     try {
       const { data } = await authAPI.login(credentials);
-      // login response already has organizationId as a flat string,
-      // normalize() handles both shapes safely
       const normalized = normalize(data);
       localStorage.setItem('user', JSON.stringify(normalized));
       set({ user: normalized, loading: false, initialized: true });
@@ -36,7 +34,7 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  // ─── Register (plain user, no org) ────────────────────────────────────────
+  // ─── Register (plain user) ────────────────────────────────────────────────
   register: async (userData) => {
     set({ loading: true });
     try {
@@ -44,7 +42,7 @@ const useAuthStore = create((set) => ({
       const normalized = normalize(data);
       localStorage.setItem('user', JSON.stringify(normalized));
       set({ user: normalized, loading: false, initialized: true });
-      toast.success('Registration successful!');
+      toast.success('Account created! Please verify your email.');
       return normalized;
     } catch (error) {
       set({ loading: false });
@@ -66,20 +64,17 @@ const useAuthStore = create((set) => ({
   },
 
   // ─── Set Auth ─────────────────────────────────────────────────────────────
-  // Called after:
-  //   • /api/organizations/register  → data has both organizationId + organization{}
-  //   • /api/auth/reset-password     → data is the plain user shape
-  // normalize() handles both safely.
+  // Called after: org registration, password reset, manual updates (e.g. verify)
   setAuth: (data) => {
-    const normalized = normalize(data);
-    localStorage.setItem('user', JSON.stringify(normalized));
-    set({ user: normalized, initialized: true });
+    const current = get().user;
+    // Merge with current user so partial updates (like { isEmailVerified: true })
+    // don't wipe out other fields
+    const merged = normalize({ ...current, ...data });
+    localStorage.setItem('user', JSON.stringify(merged));
+    set({ user: merged, initialized: true });
   },
 
-  // ─── Update User (refresh profile from server) ────────────────────────────
-  // /api/auth/me returns { organization: { _id, name, slug, plan } }
-  // We flatten organization._id → organizationId so the rest of the
-  // app (ProtectedRoute, admin guards, etc.) always finds user.organizationId.
+  // ─── Update User (refresh from server) ────────────────────────────────────
   updateUser: async () => {
     set({ loading: true });
     try {
@@ -93,9 +88,7 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  // ─── Check Auth (runs on every app load) ─────────────────────────────────
-  // Same normalization as updateUser — /api/auth/me returns the
-  // populated organization object, not a plain organizationId string.
+  // ─── Check Auth (runs on cold load) ──────────────────────────────────────
   checkAuth: async () => {
     set({ loading: true });
     try {
@@ -104,7 +97,6 @@ const useAuthStore = create((set) => ({
       localStorage.setItem('user', JSON.stringify(normalized));
       set({ user: normalized, loading: false, initialized: true });
     } catch (error) {
-      // Token invalid / expired — clear everything
       localStorage.removeItem('user');
       set({ user: null, loading: false, initialized: true });
     }

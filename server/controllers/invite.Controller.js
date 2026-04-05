@@ -1,13 +1,12 @@
-// server/controllers/invite.Controller.js
 const crypto   = require('crypto');
 const bcrypt   = require('bcryptjs');
 const Invite   = require('../models/Invite.models');
 const User     = require('../models/user.models');
 const asyncHandler  = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
+const { sendInviteEmail } = require('../utils/Brevo.utils');
 const logger   = require('../utils/logger.utils');
 
-// ─── Cookie helper ────────────────────────────────────────────────────────────
 const getCookieOptions = () => ({
   httpOnly: true,
   secure:   process.env.NODE_ENV === 'production',
@@ -16,7 +15,6 @@ const getCookieOptions = () => ({
 });
 
 // ─── POST /api/invites ────────────────────────────────────────────────────────
-// Admin creates an invite link (optionally pre-fills email + role)
 exports.createInvite = asyncHandler(async (req, res) => {
   const { email, role = 'driver' } = req.body;
 
@@ -31,10 +29,21 @@ exports.createInvite = asyncHandler(async (req, res) => {
     invitedBy:      req.user._id,
     email:          email?.trim().toLowerCase() || undefined,
     role,
-    expiresAt:      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    expiresAt:      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
   const inviteUrl = `${process.env.CLIENT_URL}/join/${token}`;
+
+  // Send invite email via Brevo if email provided
+  if (invite.email) {
+    sendInviteEmail({
+      to:          invite.email,
+      inviterName: req.user.displayName,
+      orgName:     req.user.organizationId?.name || 'your organization',
+      role:        invite.role,
+      inviteUrl,
+    }).catch((err) => logger.error(`Invite email failed: ${err.message}`));
+  }
 
   logger.info(
     `Invite created by ${req.user.email} | role=${role} | email=${invite.email || 'open'} [org: ${req.organizationId}]`
@@ -50,19 +59,14 @@ exports.createInvite = asyncHandler(async (req, res) => {
 });
 
 // ─── GET /api/invites ─────────────────────────────────────────────────────────
-// Admin lists all invites for their org
 exports.getInvites = asyncHandler(async (req, res) => {
   const invites = await Invite.find({ organizationId: req.organizationId })
     .populate('invitedBy', 'displayName email')
     .sort({ createdAt: -1 });
-
   res.json(invites);
 });
 
 // ─── GET /api/invites/:token/validate ─────────────────────────────────────────
-// PUBLIC — frontend calls this before showing the join form
-// Returns enough info to render the page (org name, role, pre-filled email)
-// but NOT the full invite document (don't leak internals)
 exports.validateInvite = asyncHandler(async (req, res) => {
   const invite = await Invite.findOne({
     token:     req.params.token,
@@ -75,26 +79,17 @@ exports.validateInvite = asyncHandler(async (req, res) => {
 
   res.json({
     valid:        true,
-    email:        invite.email || null,   // null = open invite, user can type any email
+    email:        invite.email || null,
     role:         invite.role,
     organization: invite.organizationId.name,
   });
 });
 
 // ─── POST /api/invites/:token/accept ─────────────────────────────────────────
-// PUBLIC — user registers via the invite link
-//
-// EMAIL SECURITY RULE:
-//   If the admin pre-filled an email when creating the invite, the submitted
-//   email MUST match exactly (case-insensitive).
-//   This prevents an attacker who intercepts the link from registering with
-//   a different email and stealing the invite slot.
-//
-//   If the invite is "open" (no pre-filled email), any valid email is accepted.
+// Invited users are auto-verified — the invite link proves email ownership.
 exports.acceptInvite = asyncHandler(async (req, res) => {
   const { displayName, email, password, phone } = req.body;
 
-  // ── Re-validate the token (double-check, don't trust the client) ──────────
   const invite = await Invite.findOne({
     token:     req.params.token,
     usedAt:    null,
@@ -104,7 +99,6 @@ exports.acceptInvite = asyncHandler(async (req, res) => {
   if (!invite)
     return res.status(400).json({ message: 'Invite link is invalid or has expired' });
 
-  // ── Basic field validation ────────────────────────────────────────────────
   if (!displayName?.trim())
     return res.status(400).json({ message: 'Full name is required' });
 
@@ -116,10 +110,6 @@ exports.acceptInvite = asyncHandler(async (req, res) => {
   if (!submittedEmail)
     return res.status(400).json({ message: 'Email is required' });
 
-  // ── EMAIL MISMATCH CHECK ──────────────────────────────────────────────────
-  // If the admin targeted this invite at a specific email, enforce it.
-  // This is the critical server-side guard — the frontend disabling the field
-  // is just UX, not security.
   if (invite.email && invite.email !== submittedEmail) {
     logger.warn(
       `Invite email mismatch: invite=${invite.email} submitted=${submittedEmail} token=${req.params.token}`
@@ -129,31 +119,28 @@ exports.acceptInvite = asyncHandler(async (req, res) => {
     });
   }
 
-  // ── Duplicate account check ───────────────────────────────────────────────
   const existing = await User.findOne({ email: submittedEmail });
   if (existing)
     return res.status(400).json({ message: 'An account with this email already exists' });
 
-  // ── Create the user — locked to the inviting org ─────────────────────────
   const salt = await bcrypt.genSalt(10);
   const user = await User.create({
-    email:          submittedEmail,
-    password:       await bcrypt.hash(password, salt),
-    displayName:    displayName.trim(),
-    phone:          phone?.trim() || undefined,
-    role:           invite.role,              // 'driver' or 'user'
-    organizationId: invite.organizationId,    // hard-locked to the inviting org
+    email:           submittedEmail,
+    password:        await bcrypt.hash(password, salt),
+    displayName:     displayName.trim(),
+    phone:           phone?.trim() || undefined,
+    role:            invite.role,
+    organizationId:  invite.organizationId,
+    isEmailVerified: true, // ← auto-verified: invite link proves email ownership
   });
 
-  // ── Mark invite as used (one-time link) ───────────────────────────────────
   invite.usedAt = new Date();
   await invite.save();
 
   logger.info(
-    `Invite accepted: ${submittedEmail} joined as ${invite.role} [org: ${invite.organizationId}]`
+    `Invite accepted (auto-verified): ${submittedEmail} joined as ${invite.role} [org: ${invite.organizationId}]`
   );
 
-  // ── Set auth cookie and return user ───────────────────────────────────────
   const token = generateToken(user._id);
   res.cookie('token', token, getCookieOptions());
 
@@ -163,16 +150,16 @@ exports.acceptInvite = asyncHandler(async (req, res) => {
     displayName:    user.displayName,
     role:           user.role,
     organizationId: user.organizationId,
+    isEmailVerified: true,
   });
 });
 
 // ─── DELETE /api/invites/:token ───────────────────────────────────────────────
-// Admin revokes a pending invite before it is used
 exports.revokeInvite = asyncHandler(async (req, res) => {
   const invite = await Invite.findOneAndDelete({
     token:          req.params.token,
     organizationId: req.organizationId,
-    usedAt:         null,              // can't revoke an already-used invite
+    usedAt:         null,
   });
 
   if (!invite)

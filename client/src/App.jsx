@@ -14,32 +14,25 @@ import Signup           from './pages/Auth/RegisterShop';
 import RegisterShop     from './pages/Auth/RegisterShop';
 import ForgetPassword   from './pages/Auth/ForgetPassword';
 import ResetPassword    from './pages/Auth/ResetPassword';
+import VerifyEmail      from './pages/Auth/VerifyEmail';
+import JoinOrg          from './pages/Auth/JoinOrg';
 
 // Admin Pages
-import AdminDashboard     from './pages/Admin/Dashboard';
-import AllShipments       from './pages/Admin/AllShipments';
-import Users              from './pages/Admin/Users';
-import Drivers            from './pages/Admin/Drivers';
-import Analytics          from './pages/Admin/Analytics';
+import AdminDashboard      from './pages/Admin/Dashboard';
+import AllShipments        from './pages/Admin/AllShipments';
+import Users               from './pages/Admin/Users';
+import Drivers             from './pages/Admin/Drivers';
+import Analytics           from './pages/Admin/Analytics';
 import AdminCreateShipment from './pages/Admin/CreateShipment';
-import JoinOrg             from './pages/Auth/JoinOrg';
 
 // Driver Pages
-import DriverDashboard  from './pages/Driver/Dashboard';
-import MyDeliveries     from './pages/Driver/MyDeliveries';
-import Navigation       from './pages/Driver/Navigation';
+import DriverDashboard from './pages/Driver/Dashboard';
+import MyDeliveries    from './pages/Driver/MyDeliveries';
+import Navigation      from './pages/Driver/Navigation';
 
-// ─── Protected Route ─────────────────────────────────────────────────────────
-// Guards:
-//   1. Must be logged in
-//   2. Must have one of the allowedRoles
-//   3. admin / driver must have an organizationId — if not, send to /register-shop
-//      (this catches old accounts created before multi-tenancy, or any edge case
-//       where attachTenant would otherwise return 403)
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, initialized, loading } = useAuthStore();
 
-  // Still bootstrapping — show a blank loader rather than redirecting early
   if (!initialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -48,15 +41,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // Not logged in
   if (!user) return <Navigate to="/login" replace />;
 
-  // Wrong role
   if (allowedRoles && !allowedRoles.includes(user.role))
     return <Navigate to="/" replace />;
 
-  // Admin or driver without an org → redirect to shop registration
-  // This prevents a confusing 403 from the backend's attachTenant middleware
+  // Redirect unverified users — backward compat: undefined (old users) passes through
+  if (user.isEmailVerified === false)
+    return <Navigate to="/verify-email" replace />;
+
+  // Admin or driver without an org → shop registration
   if (['admin', 'driver'].includes(user.role) && !user.organizationId)
     return <Navigate to="/register-shop" replace />;
 
@@ -67,8 +61,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
-  // Validate the JWT cookie on every cold load.
-  // checkAuth() calls /api/auth/me, normalizes the response, and sets the store.
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -106,84 +98,32 @@ function App() {
         <Route path="/register-shop"           element={<RegisterShop />} />
         <Route path="/forgot-password"         element={<ForgetPassword />} />
         <Route path="/reset-password/:token"   element={<ResetPassword />} />
-        <Route path="/join/:token" element={<JoinOrg />} />
+        <Route path="/join/:token"             element={<JoinOrg />} />
 
+        {/* Email verification — accessible while logged-in but unverified */}
+        <Route path="/verify-email"            element={<VerifyEmail />} />
 
         {/* ── Admin ──────────────────────────────────────────────────────── */}
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/shipments/create"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminCreateShipment />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/shipments"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AllShipments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Users />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/drivers"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Drivers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/analytics"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <Analytics />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/admin/dashboard"
+          element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/shipments/create"
+          element={<ProtectedRoute allowedRoles={['admin']}><AdminCreateShipment /></ProtectedRoute>} />
+        <Route path="/admin/shipments"
+          element={<ProtectedRoute allowedRoles={['admin']}><AllShipments /></ProtectedRoute>} />
+        <Route path="/admin/users"
+          element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
+        <Route path="/admin/drivers"
+          element={<ProtectedRoute allowedRoles={['admin']}><Drivers /></ProtectedRoute>} />
+        <Route path="/admin/analytics"
+          element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
 
         {/* ── Driver ─────────────────────────────────────────────────────── */}
-        <Route
-          path="/driver/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['driver']}>
-              <DriverDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/driver/deliveries"
-          element={
-            <ProtectedRoute allowedRoles={['driver']}>
-              <MyDeliveries />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/driver/navigate/:id"
-          element={
-            <ProtectedRoute allowedRoles={['driver']}>
-              <Navigation />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/driver/dashboard"
+          element={<ProtectedRoute allowedRoles={['driver']}><DriverDashboard /></ProtectedRoute>} />
+        <Route path="/driver/deliveries"
+          element={<ProtectedRoute allowedRoles={['driver']}><MyDeliveries /></ProtectedRoute>} />
+        <Route path="/driver/navigate/:id"
+          element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
 
         {/* ── Catch-all ──────────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/track" replace />} />

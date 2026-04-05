@@ -1,12 +1,13 @@
 // server/controllers/organization.Controller.js
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const Organization = require('../models/Organization.models');
 const User = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
+const { generateOTP, sendOTPEmail } = require('../utils/Brevo.utils');
 const logger = require('../utils/logger.utils');
 
-// ─── Helper: set auth cookie + return response ────────────────────────────────
 const getCookieOptions = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -14,13 +15,12 @@ const getCookieOptions = () => ({
   maxAge: 7 * 24 * 60 * 60 * 1000,
 });
 
-// ─── Register a new organization + its first admin ────────────────────────────
-// POST /api/organizations/register
-// Body: { shopName, email, password, displayName, phone? }
+const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
+
+
 exports.registerOrganization = asyncHandler(async (req, res) => {
   const { shopName, email, password, displayName, phone } = req.body;
 
-  // ── Validation ────────────────────────────────────────────────────────────
   if (!shopName || !shopName.trim())
     return res.status(400).json({ message: 'Shop name is required' });
 
@@ -33,12 +33,11 @@ exports.registerOrganization = asyncHandler(async (req, res) => {
   if (!displayName || !displayName.trim())
     return res.status(400).json({ message: 'Your full name is required' });
 
-  // ── Duplicate email check ─────────────────────────────────────────────────
   const userExists = await User.findOne({ email: email.toLowerCase() });
   if (userExists)
     return res.status(400).json({ message: 'An account with this email already exists' });
 
-  // ── Generate unique slug (add suffix if taken) ────────────────────────────
+  // ── Generate unique slug ──────────────────────────────────────────────────
   let baseSlug = shopName
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -52,32 +51,37 @@ exports.registerOrganization = asyncHandler(async (req, res) => {
     slug = `${baseSlug}-${suffix++}`;
   }
 
-  // ── Create org first (we need its _id for the user) ───────────────────────
-  const organization = await Organization.create({
-    name: shopName.trim(),
-    slug,
-  });
+  const organization = await Organization.create({ name: shopName.trim(), slug });
 
-  // ── Create the admin user linked to the org ───────────────────────────────
+  // ── Hash password + OTP ───────────────────────────────────────────────────
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
+  const otp       = generateOTP();
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+
   const user = await User.create({
-    email:          email.toLowerCase(),
-    password:       hashedPassword,
-    displayName:    displayName.trim(),
-    phone:          phone?.trim() || undefined,
-    role:           'admin',
-    organizationId: organization._id,
+    email:           email.toLowerCase(),
+    password:        hashedPassword,
+    displayName:     displayName.trim(),
+    phone:           phone?.trim() || undefined,
+    role:            'admin',
+    organizationId:  organization._id,
+    isEmailVerified: false,
+    emailOTP:        hashOTP(otp),
+    emailOTPExpire:  otpExpire,
   });
 
-  // ── Link owner back on the org ────────────────────────────────────────────
   organization.owner = user._id;
   await organization.save();
 
-  logger.info(`New organization registered: "${shopName}" by ${email}`);
+  // Send OTP — fire-and-forget
+  sendOTPEmail({ to: user.email, name: user.displayName, otp }).catch((err) => {
+    logger.error(`Failed to send OTP to ${user.email}: ${err.message}`);
+  });
 
-  // ── Set cookie + respond ──────────────────────────────────────────────────
+  logger.info(`New organization registered (unverified): "${shopName}" by ${email}`);
+
   const token = generateToken(user._id);
   res.cookie('token', token, getCookieOptions());
 
@@ -87,6 +91,7 @@ exports.registerOrganization = asyncHandler(async (req, res) => {
     displayName:    user.displayName,
     role:           user.role,
     organizationId: organization._id,
+    isEmailVerified: false,
     organization: {
       _id:  organization._id,
       name: organization.name,
@@ -97,25 +102,20 @@ exports.registerOrganization = asyncHandler(async (req, res) => {
 });
 
 // ─── Get current org details ──────────────────────────────────────────────────
-// GET /api/organizations/me   (admin only)
 exports.getMyOrganization = asyncHandler(async (req, res) => {
   const org = await Organization.findById(req.organizationId);
   if (!org)
     return res.status(404).json({ message: 'Organization not found' });
-
   return res.json(org);
 });
 
 // ─── Update org details ───────────────────────────────────────────────────────
-// PUT /api/organizations/me   (admin only)
 exports.updateOrganization = asyncHandler(async (req, res) => {
   const { name, phone, address, logoUrl } = req.body;
-
   const org = await Organization.findByIdAndUpdate(
     req.organizationId,
     { $set: { name, phone, address, logoUrl } },
     { new: true, runValidators: true }
   );
-
   return res.json(org);
 });

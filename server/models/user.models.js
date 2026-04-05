@@ -1,4 +1,3 @@
-// server/models/user.models.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -35,16 +34,21 @@ const userSchema = new mongoose.Schema({
     default: 'user',
   },
 
-  // ── Multi-tenancy ──────────────────────────────────────────────────────────
-  // Every user belongs to exactly one organization.
-  // Admins create their org on signup; drivers/users get assigned when promoted.
+  
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
     index: true,
   },
 
-  // Driver-specific fields (only used when role = 'driver')
+  isEmailVerified: {
+    type: Boolean,
+    default: false,
+  },
+ 
+  emailOTP:        { type: String, select: false },
+  emailOTPExpire:  { type: Date,   select: false },
+
   vehicleInfo: {
     type: String,
     trim: true,
@@ -85,7 +89,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Methods
 userSchema.methods.isAdmin  = function () { return this.role === 'admin';  };
 userSchema.methods.isDriver = function () { return this.role === 'driver'; };
 userSchema.methods.isUser   = function () { return this.role === 'user';   };

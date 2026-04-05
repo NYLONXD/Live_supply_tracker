@@ -1,3 +1,4 @@
+// client/src/services/api.js
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -19,7 +20,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       const hasSessionUser = Boolean(localStorage.getItem('user'));
-      if (hasSessionUser && !['/', '/login', '/track'].includes(window.location.pathname)) {
+      if (hasSessionUser && !['/', '/login', '/track', '/verify-email'].includes(window.location.pathname)) {
         localStorage.removeItem('user');
         window.location.href = '/login';
         toast.error('Session expired. Please login again.');
@@ -34,54 +35,55 @@ api.interceptors.response.use(
 
 // ─── Auth APIs ────────────────────────────────────────────────────────────────
 export const authAPI = {
-  login:          (data)        => api.post('/api/auth/login', data),
-  register:       (data)        => api.post('/api/auth/register', data),
-  registerOrganization:(data)   => api.post('/api/organizations/register', data),
-  getMe:          ()            => api.get('/api/auth/me'),
-  forgotPassword: (data)        => api.post('/api/auth/forgot-password', data),
-  resetPassword:  (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
-  logout:         ()            => api.post('/api/auth/logout'),
+  login:               (data)        => api.post('/api/auth/login', data),
+  register:            (data)        => api.post('/api/auth/register', data),
+  registerOrganization:(data)        => api.post('/api/organizations/register', data),
+  getMe:               ()            => api.get('/api/auth/me'),
+  forgotPassword:      (data)        => api.post('/api/auth/forgot-password', data),
+  resetPassword:       (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
+  logout:              ()            => api.post('/api/auth/logout'),
+  // ── Email verification ────────────────────────────────────────────────────
+  verifyEmail:         (data)        => api.post('/api/auth/verify-email', data),
+  resendOTP:           ()            => api.post('/api/auth/resend-otp'),
+  // ── Profile update ────────────────────────────────────────────────────────
+  updateProfile:       (data)        => api.put('/api/auth/profile', data),
 };
 
 // ─── Shipment APIs ────────────────────────────────────────────────────────────
 export const shipmentAPI = {
-  getAll:  (params)        => api.get('/api/shipments', { params }),
-  getById: (id)            => api.get(`/api/shipments/${id}`),
-  create:  (data)          => api.post('/api/shipments', data),
-  update:  (id, data)      => api.put(`/api/shipments/${id}`, data),
-  delete:  (id)            => api.delete(`/api/shipments/${id}`),
-  track:   (trackingNumber)=> api.get(`/api/track/${trackingNumber}`),
+  getAll:   (params)         => api.get('/api/shipments', { params }),
+  getById:  (id)             => api.get(`/api/shipments/${id}`),
+  create:   (data)           => api.post('/api/shipments', data),
+  update:   (id, data)       => api.put(`/api/shipments/${id}`, data),
+  delete:   (id)             => api.delete(`/api/shipments/${id}`),
+  track:    (trackingNumber) => api.get(`/api/track/${trackingNumber}`),
 };
 
 // ─── Admin APIs ───────────────────────────────────────────────────────────────
 export const adminAPI = {
-  getAllUsers:      ()                       => api.get('/api/admin/users'),
-  getAllDrivers:    ()                       => api.get('/api/admin/drivers'),
-  promoteToDriver: (userId, data)           => api.post(`/api/admin/users/${userId}/promote-driver`, data),
-  demoteDriver:    (userId)                 => api.post(`/api/admin/users/${userId}/demote-driver`),
-  assignDriver:    (shipmentId, driverId)   => api.post(`/api/admin/shipments/${shipmentId}/assign`, { driverId }),
-  toggleUserStatus:(userId)                 => api.patch(`/api/admin/users/${userId}/toggle`),
+  getAllUsers:       ()                     => api.get('/api/admin/users'),
+  getAllDrivers:     ()                     => api.get('/api/admin/drivers'),
+  promoteToDriver:  (userId, data)         => api.post(`/api/admin/users/${userId}/promote-driver`, data),
+  demoteDriver:     (userId)               => api.post(`/api/admin/users/${userId}/demote-driver`),
+  assignDriver:     (shipmentId, driverId) => api.post(`/api/admin/shipments/${shipmentId}/assign`, { driverId }),
+  toggleUserStatus: (userId)               => api.patch(`/api/admin/users/${userId}/toggle`),
 };
 
+// ─── Invite APIs ──────────────────────────────────────────────────────────────
 export const inviteAPI = {
-  // Admin: create a new invite link
   create:   (data)  => api.post('/api/invites', data),
-  // Admin: list all invites for their org
   getAll:   ()      => api.get('/api/invites'),
-  // Admin: revoke a pending invite
   revoke:   (token) => api.delete(`/api/invites/${token}`),
-  // Public: validate a token before showing the join form
   validate: (token) => api.get(`/api/invites/${token}/validate`),
-  // Public: accept an invite and create the account
   accept:   (token, data) => api.post(`/api/invites/${token}/accept`, data),
 };
 
 // ─── Driver APIs ──────────────────────────────────────────────────────────────
 export const driverAPI = {
-  getMyShipments: (params)              => api.get('/api/driver/shipments', { params }),
-  updateStatus:   (shipmentId, status)  => api.put(`/api/driver/shipments/${shipmentId}/status`, { status }),
-  updateLocation: (data)                => api.post('/api/driver/location', data),
-  addNotes:       (shipmentId, notes)   => api.put(`/api/driver/shipments/${shipmentId}/notes`, { notes }),
+  getMyShipments: (params)             => api.get('/api/driver/shipments', { params }),
+  updateStatus:   (shipmentId, status) => api.put(`/api/driver/shipments/${shipmentId}/status`, { status }),
+  updateLocation: (data)               => api.post('/api/driver/location', data),
+  addNotes:       (shipmentId, notes)  => api.put(`/api/driver/shipments/${shipmentId}/notes`, { notes }),
 };
 
 // ─── Analytics APIs ───────────────────────────────────────────────────────────
@@ -104,6 +106,7 @@ export const aiAPI = {
   previewETA: (data) => api.post('/api/ai/preview-eta', data),
 };
 
+// ─── Organization APIs ────────────────────────────────────────────────────────
 export const organizationAPI = {
   getMyOrg:    ()     => api.get('/api/organizations/me'),
   updateMyOrg: (data) => api.put('/api/organizations/me', data),

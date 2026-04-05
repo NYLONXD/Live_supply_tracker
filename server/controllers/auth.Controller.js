@@ -1,10 +1,10 @@
 // server/controllers/auth.Controller.js
 const crypto    = require('crypto');
 const bcrypt    = require('bcryptjs');
-const nodemailer = require('nodemailer');
 const User      = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
+const { generateOTP, sendOTPEmail, sendPasswordResetEmail } = require('../utils/Brevo.utils');
 const logger    = require('../utils/logger.utils');
 
 // ─── Cookie options ────────────────────────────────────────────────────────────
@@ -19,28 +19,22 @@ const sendAuthResponse = (res, statusCode, user, extra = {}) => {
   const token = generateToken(user._id);
   res.cookie('token', token, getCookieOptions());
   return res.status(statusCode).json({
-    _id:            user._id,
-    email:          user.email,
-    displayName:    user.displayName,
-    phone:          user.phone,
-    role:           user.role,
-    organizationId: user.organizationId,
+    _id:              user._id,
+    email:            user.email,
+    displayName:      user.displayName,
+    phone:            user.phone,
+    role:             user.role,
+    organizationId:   user.organizationId,
+    isEmailVerified:  user.isEmailVerified,
     ...extra,
   });
 };
 
-// ─── Email transporter ────────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// ─── Hash an OTP with SHA-256 ─────────────────────────────────────────────────
+const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
-// ─── Register ─────────────────────────────────────────────────────────────────
-// NOTE: This endpoint is for regular users (customers/viewers).
-// To register a new shop with admin access, use POST /api/organizations/register
+// ─── Register (regular user / customer) ──────────────────────────────────────
+// NOTE: Shop admins use POST /api/organizations/register
 exports.register = asyncHandler(async (req, res) => {
   const { email, password, displayName, phone } = req.body;
 
@@ -60,16 +54,28 @@ exports.register = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
+  // Generate OTP before creating user
+  const otp     = generateOTP();
+  const hashedOTP = hashOTP(otp);
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
   const user = await User.create({
-    email:       email.toLowerCase(),
-    password:    hashedPassword,
-    displayName: displayName.trim(),
-    phone:       phone?.trim() || undefined,
-    role:        'user',
-    // organizationId is NOT set here — regular users aren't tied to a shop
+    email:           email.toLowerCase(),
+    password:        hashedPassword,
+    displayName:     displayName.trim(),
+    phone:           phone?.trim() || undefined,
+    role:            'user',
+    isEmailVerified: false,
+    emailOTP:        hashedOTP,
+    emailOTPExpire:  otpExpire,
   });
 
-  logger.info(`New user registered: ${email}`);
+  // Send OTP — fire-and-forget (don't fail registration if email fails)
+  sendOTPEmail({ to: user.email, name: user.displayName, otp }).catch((err) => {
+    logger.error(`Failed to send OTP to ${user.email}: ${err.message}`);
+  });
+
+  logger.info(`New user registered (unverified): ${email}`);
   sendAuthResponse(res, 201, user);
 });
 
@@ -95,18 +101,91 @@ exports.login = asyncHandler(async (req, res) => {
   sendAuthResponse(res, 200, user);
 });
 
+// ─── Verify Email (OTP) ───────────────────────────────────────────────────────
+// POST /api/auth/verify-email   { otp: "123456" }   (requires: logged-in cookie)
+exports.verifyEmail = asyncHandler(async (req, res) => {
+  const { otp } = req.body;
+
+  if (!otp || otp.toString().length !== 6)
+    return res.status(400).json({ message: 'A valid 6-digit OTP is required' });
+
+  // Re-fetch with hidden fields
+  const user = await User.findById(req.user._id).select('+emailOTP +emailOTPExpire');
+
+  if (!user)
+    return res.status(404).json({ message: 'User not found' });
+
+  if (user.isEmailVerified)
+    return res.status(400).json({ message: 'Email is already verified' });
+
+  if (!user.emailOTP || !user.emailOTPExpire)
+    return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
+
+  if (user.emailOTPExpire < new Date())
+    return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+
+  if (user.emailOTP !== hashOTP(otp.toString()))
+    return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
+
+  // Mark verified, clear OTP fields
+  user.isEmailVerified = true;
+  user.emailOTP        = undefined;
+  user.emailOTPExpire  = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  logger.info(`Email verified for: ${user.email}`);
+
+  // Return updated user data
+  return res.status(200).json({
+    message:         'Email verified successfully',
+    isEmailVerified: true,
+  });
+});
+
+// ─── Resend OTP ───────────────────────────────────────────────────────────────
+// POST /api/auth/resend-otp   (requires: logged-in cookie)
+exports.resendOTP = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('+emailOTP +emailOTPExpire');
+
+  if (!user)
+    return res.status(404).json({ message: 'User not found' });
+
+  if (user.isEmailVerified)
+    return res.status(400).json({ message: 'Email is already verified' });
+
+  // Throttle: block if OTP was sent in the last 60 seconds
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+  if (user.emailOTPExpire && user.emailOTPExpire > new Date(Date.now() + 9 * 60 * 1000)) {
+    return res.status(429).json({ message: 'Please wait 60 seconds before requesting a new OTP.' });
+  }
+
+  const otp       = generateOTP();
+  user.emailOTP   = hashOTP(otp);
+  user.emailOTPExpire = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save({ validateBeforeSave: false });
+
+  const sent = await sendOTPEmail({ to: user.email, name: user.displayName, otp });
+
+  if (!sent)
+    return res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
+
+  logger.info(`OTP resent to: ${user.email}`);
+  res.status(200).json({ message: 'A new OTP has been sent to your email.' });
+});
+
 // ─── Get Me ───────────────────────────────────────────────────────────────────
 exports.getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).populate('organizationId', 'name slug plan');
   res.json({
-    _id:          user._id,
-    email:        user.email,
-    displayName:  user.displayName,
-    phone:        user.phone,
-    role:         user.role,
-    organization: user.organizationId,
-    preferences:  user.preferences,
-    lastLogin:    user.lastLogin,
+    _id:             user._id,
+    email:           user.email,
+    displayName:     user.displayName,
+    phone:           user.phone,
+    role:            user.role,
+    organization:    user.organizationId,
+    isEmailVerified: user.isEmailVerified,
+    preferences:     user.preferences,
+    lastLogin:       user.lastLogin,
   });
 });
 
@@ -118,6 +197,30 @@ exports.updatePreferences = asyncHandler(async (req, res) => {
   if (theme)                        user.preferences.theme = theme;
   await user.save();
   res.json({ preferences: user.preferences });
+});
+
+// ─── Update Profile ───────────────────────────────────────────────────────────
+exports.updateProfile = asyncHandler(async (req, res) => {
+  const { displayName, phone, vehicleInfo, vehicleNumber } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  if (displayName)   user.displayName  = displayName.trim();
+  if (phone)         user.phone        = phone.trim();
+  if (vehicleInfo)   user.vehicleInfo  = vehicleInfo;
+  if (vehicleNumber) user.vehicleNumber = vehicleNumber;
+
+  await user.save();
+  logger.info(`Profile updated for: ${user.email}`);
+  res.json({
+    _id:         user._id,
+    email:       user.email,
+    displayName: user.displayName,
+    phone:       user.phone,
+    role:        user.role,
+    vehicleInfo: user.vehicleInfo,
+    vehicleNumber: user.vehicleNumber,
+  });
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
@@ -139,18 +242,12 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 min
   await user.save({ validateBeforeSave: false });
 
-  const resetUrl = `${process.env.CLIENT_URL}/user/reset-password?token=${token}`;
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
-  await transporter.sendMail({
-    from:    process.env.EMAIL_USER,
-    to:      user.email,
-    subject: 'Password Reset Request',
-    html: `
-      <p>You requested a password reset.</p>
-      <p><a href="${resetUrl}">Click here to reset your password</a></p>
-      <p>This link expires in 30 minutes.</p>
-      <p>If you didn't request this, ignore this email.</p>
-    `,
+  await sendPasswordResetEmail({
+    to:       user.email,
+    name:     user.displayName || 'there',
+    resetUrl,
   });
 
   res.json({ message: 'If that email exists, a reset link has been sent.' });

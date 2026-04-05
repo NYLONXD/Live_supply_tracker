@@ -30,12 +30,11 @@ export function ShipmentsProvider({ children }) {
 
   useEffect(() => {
     fetchShipments();
-    // Listen for auth changes to refetch
+  
     const unsub = auth.onAuthStateChanged(() => fetchShipments());
     return () => unsub();
   }, []);
 
-  // Add a new shipment and refresh list
   const addShipment = async (shipmentData) => {
     const userId = getUserId();
     if (!userId) return;
@@ -63,7 +62,7 @@ export function ShipmentsProvider({ children }) {
   const deleteShipment = async (id) => {
     const userId = getUserId();
     if (!userId) return;
-    await fetch(`http://localhost:500w0/api/shipments/${id}`, {
+    await fetch(`http://localhost:5000/api/shipments/${id}`, {
       method: 'DELETE',
       headers: { 'x-user-id': userId },
     });
