@@ -3,7 +3,7 @@
 // API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-// export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoibnlsb254ZCIsImEiOiJjbWJ6ZndlbmUxdWh4MmxzMXVlNHo1bHY4In0.skucR8Fy2ydShwGEp7kvwQ';
+
 
 // User Roles
 export const ROLES = {
