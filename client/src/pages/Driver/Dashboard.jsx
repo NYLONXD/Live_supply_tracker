@@ -51,7 +51,7 @@ export function DriverDashboard() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Assigned</p>
-              <p className="text-3xl font-bold text-white">{stats.assigned}</p>
+              <p className="text-3xl font-bold text-black">{stats.assigned}</p>
             </div>
           </div>
         </Card>
@@ -63,7 +63,7 @@ export function DriverDashboard() {
             </div>
             <div>
               <p className="text-sm text-slate-400">In Transit</p>
-              <p className="text-3xl font-bold text-white">{stats.inTransit}</p>
+              <p className="text-3xl font-bold text-black">{stats.inTransit}</p>
             </div>
           </div>
         </Card>
@@ -75,14 +75,14 @@ export function DriverDashboard() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Completed</p>
-              <p className="text-3xl font-bold text-white">{stats.completed}</p>
+              <p className="text-3xl font-bold text-black">{stats.completed}</p>
             </div>
           </div>
         </Card>
       </div>
 
       <Card>
-        <h3 className="text-lg font-semibold text-white mb-4">Active Deliveries</h3>
+        <h3 className="text-lg font-semibold text-black mb-4">Active Deliveries</h3>
         <div className="space-y-3">
           {shipments.slice(0, 5).map((shipment) => (
             <div

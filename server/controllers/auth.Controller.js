@@ -142,8 +142,6 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
   });
 });
 
-// ─── Resend OTP ───────────────────────────────────────────────────────────────
-// POST /api/auth/resend-otp   (requires: logged-in cookie)
 exports.resendOTP = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select('+emailOTP +emailOTPExpire');
 
@@ -153,14 +151,13 @@ exports.resendOTP = asyncHandler(async (req, res) => {
   if (user.isEmailVerified)
     return res.status(400).json({ message: 'Email is already verified' });
 
-  // Throttle: block if OTP was sent in the last 60 seconds
-  const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-  if (user.emailOTPExpire && user.emailOTPExpire > new Date(Date.now() + 9 * 60 * 1000)) {
+  const sentRecentlyThreshold = new Date(Date.now() + 9 * 60 * 1000);
+  if (user.emailOTPExpire && user.emailOTPExpire > sentRecentlyThreshold) {
     return res.status(429).json({ message: 'Please wait 60 seconds before requesting a new OTP.' });
   }
 
-  const otp       = generateOTP();
-  user.emailOTP   = hashOTP(otp);
+  const otp = generateOTP();
+  user.emailOTP = hashOTP(otp);
   user.emailOTPExpire = new Date(Date.now() + 10 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
