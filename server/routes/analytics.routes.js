@@ -5,8 +5,10 @@ const {
   getShipmentsPerDay,
 } = require('../controllers/analytics.Controller');
 const { protect, admin } = require('../middleware/auth.middleware');
+const { attachTenant } = require('../middleware/tenant.middleware');
 
 router.use(protect);
+router.use(attachTenant);
 router.use(admin);
 
 router.get('/', getAnalytics);
