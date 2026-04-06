@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
+import { API_BASE_URL } from '../utils/constants';
 
 const ShipmentsContext = createContext();
 
@@ -16,7 +17,7 @@ export function ShipmentsProvider({ children }) {
     try {
       const userId = getUserId();
       if (!userId) throw new Error('User not authenticated');
-      const res = await fetch('http://localhost:5000/api/shipments' , {
+      const res = await fetch(`${API_BASE_URL}/api/shipments`, {
         headers: { 'x-user-id': userId }
       });
       const data = await res.json();
@@ -38,7 +39,7 @@ export function ShipmentsProvider({ children }) {
   const addShipment = async (shipmentData) => {
     const userId = getUserId();
     if (!userId) return;
-    await fetch('http://localhost:5000/api/shipments', {
+    await fetch(`${API_BASE_URL}/api/shipments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
       body: JSON.stringify(shipmentData),
@@ -50,7 +51,7 @@ export function ShipmentsProvider({ children }) {
   const editShipment = async (id, update) => {
     const userId = getUserId();
     if (!userId) return;
-    await fetch(`http://localhost:5000/api/shipments/${id}`, {
+    await fetch(`${API_BASE_URL}/api/shipments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
       body: JSON.stringify(update),
@@ -62,7 +63,7 @@ export function ShipmentsProvider({ children }) {
   const deleteShipment = async (id) => {
     const userId = getUserId();
     if (!userId) return;
-    await fetch(`http://localhost:5000/api/shipments/${id}`, {
+    await fetch(`${API_BASE_URL}/api/shipments/${id}`, {
       method: 'DELETE',
       headers: { 'x-user-id': userId },
     });
