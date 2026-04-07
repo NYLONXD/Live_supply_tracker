@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+// client/src/pages/Admin/CreateShipment.jsx
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Package, Route, Phone, UserRound, Map } from 'lucide-react';
+import { MapPin, Package, Route, Phone, UserRound, Map, RotateCcw } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -8,32 +9,30 @@ import Input from '../../components/common/Input';
 import GooglePlacesInput from '../../components/common/GooglePlacesInput';
 import { adminAPI, shipmentAPI } from '../../services/api';
 import { loadGoogleMaps } from '../../utils/googleMaps';
+import useDraft from '../../hooks/useDraft';
 import toast from 'react-hot-toast';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const DRAFT_KEY = 'create-shipment-admin';
 
 const emptyLocation = { address: '', lat: null, lng: null };
 
-// ── Simple debounce hook ─────────────────────────────────────────────────────
-function useDebounce(fn, delay = 300) {
-  const timerRef = useRef(null);
-  return useCallback(
-    (...args) => {
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => fn(...args), delay);
-    },
-    [fn, delay],
-  );
-}
+const INITIAL_FORM = {
+  customerName:   '',
+  customerPhone:  '',
+  pickup:         emptyLocation,
+  delivery:       emptyLocation,
+  notes:          '',
+  selectedDriver: '',
+};
 
-// ── Map preview component ────────────────────────────────────────────────────
+// ── Map preview ──────────────────────────────────────────────────────────────
 function RouteMapPreview({ pickup, delivery, routeGeometry }) {
   const mapRef         = useRef(null);
   const mapInstanceRef = useRef(null);
   const routeLineRef   = useRef(null);
   const markersRef     = useRef([]);
 
-  // Draw the map whenever geometry / coords change
   const drawMap = useCallback(async () => {
     if (!mapRef.current) return;
     if (!pickup.lat || !delivery.lat) return;
@@ -53,11 +52,9 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
     }
     const map = mapInstanceRef.current;
 
-    // Clear old markers
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    // Pickup marker (green)
     markersRef.current.push(
       new google.maps.Marker({
         map,
@@ -74,7 +71,6 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
       }),
     );
 
-    // Delivery marker (red)
     markersRef.current.push(
       new google.maps.Marker({
         map,
@@ -91,14 +87,12 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
       }),
     );
 
-    // Clear old route
     if (routeLineRef.current) {
       routeLineRef.current.setMap(null);
       routeLineRef.current = null;
     }
 
     if (routeGeometry?.length) {
-      // Draw saved geometry (post-calculation)
       routeLineRef.current = new google.maps.Polyline({
         path: routeGeometry.map(([lng, lat]) => ({ lat, lng })),
         geodesic: true,
@@ -112,7 +106,6 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
       routeGeometry.forEach(([lng, lat]) => bounds.extend({ lat, lng }));
       map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
     } else {
-      // No geometry yet — just fit both markers
       const bounds = new google.maps.LatLngBounds();
       bounds.extend({ lat: pickup.lat, lng: pickup.lng });
       bounds.extend({ lat: delivery.lat, lng: delivery.lng });
@@ -120,12 +113,10 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
     }
   }, [pickup, delivery, routeGeometry]);
 
-  // Run whenever the dep values change
   const prevKey = useRef('');
   const key = `${pickup.lat},${pickup.lng}|${delivery.lat},${delivery.lng}|${routeGeometry?.length ?? 0}`;
   if (key !== prevKey.current) {
     prevKey.current = key;
-    // Fire on next tick so mapRef is mounted
     setTimeout(drawMap, 0);
   }
 
@@ -139,15 +130,12 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
         <span className="text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
           {routeGeometry?.length ? 'Calculated Route' : 'Location Preview'}
         </span>
-        {/* Legend */}
         <div className="ml-auto flex items-center gap-4">
           <span className="flex items-center gap-1.5 text-[10px] font-medium text-brand-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-green-600 inline-block" />
-            Pickup
+            <span className="w-2 h-2 rounded-full bg-green-600 inline-block" />Pickup
           </span>
           <span className="flex items-center gap-1.5 text-[10px] font-medium text-brand-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-red-600 inline-block" />
-            Delivery
+            <span className="w-2 h-2 rounded-full bg-red-600 inline-block" />Delivery
           </span>
         </div>
       </div>
@@ -159,39 +147,53 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function AdminCreateShipment() {
   const navigate = useNavigate();
+  const { draft, restored, saveDraft, clearDraft } = useDraft(DRAFT_KEY);
 
-  const [loading,      setLoading]      = useState(false);
-  const [estimating,   setEstimating]   = useState(false);
-  const [drivers,      setDrivers]      = useState([]);
-  const [driversLoaded,setDriversLoaded]= useState(false);
-  const [routeDetails, setRouteDetails] = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [estimating,    setEstimating]    = useState(false);
+  const [drivers,       setDrivers]       = useState([]);
+  const [driversLoaded, setDriversLoaded] = useState(false);
+  const [routeDetails,  setRouteDetails]  = useState(null);
+  const [draftBanner,   setDraftBanner]   = useState(false);
 
-  const [formData, setFormData] = useState({
-    customerName:   '',
-    customerPhone:  '',
-    pickup:         emptyLocation,
-    delivery:       emptyLocation,
-    notes:          '',
-    selectedDriver: '',
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM);
 
-  // ── Text fields (debounced) ───────────────────────────────────────────────
-  const handleTextChange = (event) => {
-    const { name, value } = event.target;
+  // ── Restore draft once IndexedDB has been read ───────────────────────────
+  useEffect(() => {
+    if (!restored) return;
+    if (draft) {
+      setFormData(draft.formData ?? INITIAL_FORM);
+      if (draft.routeDetails) setRouteDetails(draft.routeDetails);
+      setDraftBanner(true);
+    }
+  }, [restored]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-save on every change ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!restored) return; // don't save before we've loaded
+    saveDraft({ formData, routeDetails });
+  }, [formData, routeDetails]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const discardDraft = () => {
+    clearDraft();
+    setFormData(INITIAL_FORM);
+    setRouteDetails(null);
+    setDraftBanner(false);
+    toast('Draft cleared');
+  };
+
+  // ── Field handlers ────────────────────────────────────────────────────────
+  const handleTextChange = (e) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ── Address text changes (debounced 250 ms) ───────────────────────────────
-  // Only the free-text address string is updated; lat/lng are NOT cleared on
-  // every keystroke — they're only cleared when the string actually changes
-  // away from the last autocomplete-selected value.
   const handleAddressText = useCallback(
-    (field) => (event) => {
-      const newAddress = event.target.value;
+    (field) => (e) => {
+      const newAddress = e.target.value;
       setRouteDetails(null);
       setFormData((prev) => {
         const current = prev[field];
-        // If the address text diverges from what was selected, reset coords
         const coordsInvalid = newAddress !== current.address;
         return {
           ...prev,
@@ -206,11 +208,7 @@ export default function AdminCreateShipment() {
     [],
   );
 
-  // ── Autocomplete selection (memoised per field) ──────────────────────────
-  // useCallback with stable [field] dep ensures the function reference is the
-  // same across re-renders for the same field, so GooglePlacesInput's ref
-  // stays correct without re-mounting.
-  const handlePickupSelect  = useCallback((place) => {
+  const handlePickupSelect = useCallback((place) => {
     setRouteDetails(null);
     setFormData((prev) => ({ ...prev, pickup: place }));
   }, []);
@@ -231,27 +229,23 @@ export default function AdminCreateShipment() {
       toast.error('Select both pickup and delivery from the dropdown suggestions first');
       return;
     }
-
     setEstimating(true);
     try {
       const google = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
-      const directionsService = new google.maps.DirectionsService();
-
-      const result = await directionsService.route({
+      const ds = new google.maps.DirectionsService();
+      const result = await ds.route({
         origin:      { lat: formData.pickup.lat,   lng: formData.pickup.lng   },
         destination: { lat: formData.delivery.lat, lng: formData.delivery.lng },
         travelMode:  google.maps.TravelMode.DRIVING,
       });
-
       const route = result.routes[0];
       const leg   = route.legs[0];
-
-      setRouteDetails({
-        distanceKm:     Number((leg.distance.value / 1000).toFixed(2)),
+      const details = {
+        distanceKm:      Number((leg.distance.value / 1000).toFixed(2)),
         durationMinutes: Math.ceil(leg.duration.value / 60),
-        routeGeometry:  route.overview_path.map((point) => [point.lng(), point.lat()]),
-      });
-
+        routeGeometry:   route.overview_path.map((p) => [p.lng(), p.lat()]),
+      };
+      setRouteDetails(details);
       toast.success('Route calculated');
       fetchDrivers();
     } catch (error) {
@@ -274,9 +268,8 @@ export default function AdminCreateShipment() {
   };
 
   // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!routeDetails) {
       toast.error('Please calculate the route before creating the shipment');
       return;
@@ -285,7 +278,6 @@ export default function AdminCreateShipment() {
       toast.error('Customer name is required');
       return;
     }
-
     setLoading(true);
     try {
       const { data: shipment } = await shipmentAPI.create({
@@ -302,11 +294,10 @@ export default function AdminCreateShipment() {
         estimatedMinutes: routeDetails.durationMinutes,
         routeGeometry:    routeDetails.routeGeometry,
       });
-
       if (formData.selectedDriver) {
         await adminAPI.assignDriver(shipment._id, formData.selectedDriver);
       }
-
+      clearDraft(); // wipe IndexedDB draft on success
       toast.success('Shipment created successfully');
       navigate('/admin/shipments');
     } catch (error) {
@@ -319,6 +310,23 @@ export default function AdminCreateShipment() {
   return (
     <DashboardLayout title="Create Shipment">
       <div className="mx-auto max-w-4xl">
+
+        {/* Draft restored banner */}
+        {draftBanner && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+            <span className="text-amber-800 font-medium">
+              📝 We restored your unsaved draft. Continue where you left off.
+            </span>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-semibold text-xs shrink-0"
+            >
+              <RotateCcw size={13} /> Discard
+            </button>
+          </div>
+        )}
+
         <Card variant="elevated">
           <form onSubmit={handleSubmit} className="space-y-6">
 
@@ -357,8 +365,7 @@ export default function AdminCreateShipment() {
                 />
                 {formData.pickup.lat && (
                   <p className="mt-1.5 text-[10px] font-medium text-green-600 flex items-center gap-1">
-                    <MapPin size={10} />
-                    Location confirmed
+                    <MapPin size={10} /> Location confirmed
                   </p>
                 )}
               </div>
@@ -375,14 +382,13 @@ export default function AdminCreateShipment() {
                 />
                 {formData.delivery.lat && (
                   <p className="mt-1.5 text-[10px] font-medium text-green-600 flex items-center gap-1">
-                    <MapPin size={10} />
-                    Location confirmed
+                    <MapPin size={10} /> Location confirmed
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Map Preview — shown as soon as both coords are known */}
+            {/* Map Preview */}
             <RouteMapPreview
               pickup={formData.pickup}
               delivery={formData.delivery}
@@ -410,8 +416,7 @@ export default function AdminCreateShipment() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="flex items-center gap-2 text-lg font-semibold text-black">
-                    <Route size={18} />
-                    Google route summary
+                    <Route size={18} /> Google route summary
                   </h3>
                   <p className="mt-1 text-sm text-brand-zinc-500">
                     {canEstimate
@@ -419,7 +424,6 @@ export default function AdminCreateShipment() {
                       : 'Select both locations from the suggestions above.'}
                   </p>
                 </div>
-
                 <Button
                   type="button"
                   onClick={calculateRoute}

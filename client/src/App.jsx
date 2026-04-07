@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import useAuthStore from './stores/authStore';
+import PageLoader from '../src/components/common/common/PageLoader';
 
 // Public Pages
 import Landing          from './pages/Public/Landing';
@@ -46,11 +47,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (allowedRoles && !allowedRoles.includes(user.role))
     return <Navigate to="/" replace />;
 
-  // Redirect unverified users — backward compat: undefined (old users) passes through
   if (user.isEmailVerified === false)
     return <Navigate to="/verify-email" replace />;
 
-  // Admin or driver without an org → shop registration
   if (['admin', 'driver'].includes(user.role) && !user.organizationId)
     return <Navigate to="/register-shop" replace />;
 
@@ -67,6 +66,9 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* Page-transition overlay — must be inside BrowserRouter to use useLocation */}
+      <PageLoader />
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -99,8 +101,6 @@ function App() {
         <Route path="/forgot-password"         element={<ForgetPassword />} />
         <Route path="/reset-password/:token"   element={<ResetPassword />} />
         <Route path="/join/:token"             element={<JoinOrg />} />
-
-        {/* Email verification — accessible while logged-in but unverified */}
         <Route path="/verify-email"            element={<VerifyEmail />} />
 
         {/* ── Admin ──────────────────────────────────────────────────────── */}

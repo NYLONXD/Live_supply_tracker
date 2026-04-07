@@ -1,9 +1,10 @@
 // client/src/pages/Auth/JoinOrg.jsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, User, Mail, Phone, Truck, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, User, Mail, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import Logo from '../../components/common/common/Logo';
 import useAuthStore from '../../stores/authStore';
 import api from '../../services/api';
 
@@ -164,8 +165,8 @@ export default function JoinOrg() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-10 h-10 bg-black flex items-center justify-center rounded-sm text-white mx-auto mb-4">
-            <Truck size={18} />
+          <div className="flex justify-center mb-4">
+            <Logo showText={false} />
           </div>
 
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase tracking-wider mb-3 text-zinc-500">

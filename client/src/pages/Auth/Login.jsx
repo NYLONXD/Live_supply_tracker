@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Truck, ArrowRight, AlertCircle, Mail, Lock,
+  ArrowRight, AlertCircle, Mail, Lock,
   ShieldCheck, Globe, Sparkles,
 } from "lucide-react";
 import useAuthStore from "../../stores/authStore";
+import Logo from "../../components/common/common/Logo";
 
 /* ─── Input Field ─────────────────────────────────────────────────── */
 function Field({ label, icon: Icon, ...props }) {
@@ -106,14 +107,7 @@ export default function Login() {
 
           {/* Brand */}
           <div className="relative z-10">
-            <Link to="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-9 h-9 bg-amber-400 flex items-center justify-center rounded-xl shadow-lg shadow-amber-400/30 group-hover:shadow-amber-400/50 transition-shadow">
-                <Truck size={17} className="text-zinc-900" />
-              </div>
-              <span className="font-bold tracking-tight text-white text-base">
-                SUPPLY <span className="text-amber-400">TRACKER</span>
-              </span>
-            </Link>
+                <Logo linkTo="/" size="lg" showText dark/>
           </div>
 
           {/* Headline */}
@@ -175,13 +169,8 @@ export default function Login() {
 
           {/* Top — Don't have an account? Sign up */}
           <div className="flex items-center justify-between mb-10">
-            <Link to="/" className="lg:hidden inline-flex items-center gap-2">
-              <div className="w-8 h-8 bg-amber-400 flex items-center justify-center rounded-lg">
-                <Truck size={15} className="text-zinc-900" />
-              </div>
-              <span className="font-bold text-sm text-zinc-900">
-                SUPPLY <span className="text-amber-500">TRACKER</span>
-              </span>
+            <Link to="/" className="lg:hidden">
+              <Logo size="sm" showText />
             </Link>
             <p className="text-zinc-500 text-xs ml-auto">
               Don't have an account?{" "}

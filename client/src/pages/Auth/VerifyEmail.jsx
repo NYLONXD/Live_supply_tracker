@@ -1,7 +1,8 @@
 // client/src/pages/Auth/VerifyEmail.jsx
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Truck, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
+import Logo from '../../components/common/common/Logo';
 import useAuthStore from '../../stores/authStore';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -132,12 +133,7 @@ export default function VerifyEmail() {
 
         {/* Header */}
         <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
-            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white group-hover:bg-zinc-800 transition-colors">
-              <Truck size={16} />
-            </div>
-            <span className="font-bold tracking-tight text-lg">SUPPLY TRACKER</span>
-          </Link>
+          <Logo linkTo="/" size="md" showText className="mb-6" />
 
           {/* Mail icon */}
           <div className="w-16 h-16 bg-zinc-50 border-2 border-zinc-200 rounded-full flex items-center justify-center mx-auto mb-5">

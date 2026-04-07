@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, Truck } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import Logo from '../../components/common/common/Logo';
 import { authAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import toast from 'react-hot-toast';
@@ -70,12 +71,7 @@ export default function ResetPassword() {
         <div className="absolute top-0 left-0 w-full h-1 bg-black" />
 
         <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6 group">
-            <div className="w-8 h-8 bg-black flex items-center justify-center rounded-sm text-white group-hover:bg-zinc-800 transition-colors">
-              <Truck size={16} />
-            </div>
-            <span className="font-bold tracking-tight text-lg">SUPPLY TRACKER</span>
-          </Link>
+          <Logo linkTo="/" size="md" showText className="mb-6" />
           <h1 className="text-2xl font-bold tracking-tight text-black mb-2">Set New Password</h1>
           <p className="text-zinc-500 text-sm">Choose a strong password for your account.</p>
         </div>

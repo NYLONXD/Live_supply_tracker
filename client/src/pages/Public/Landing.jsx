@@ -21,6 +21,7 @@ import Button from "../../components/common/Button";
 import craneImg from "../../assets/crane.png";
 import shipmentIcon from "../../assets/shipment-icon.png";
 import bgHistory from "../../assets/bg-history.png";
+import Logo from '../../components/common/common/Logo';
 
 export default function Landing() {
   return (
@@ -115,15 +116,7 @@ export default function Landing() {
       {/* --- Navigation --- */}
       <nav className="fixed w-full z-50 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-zinc-100 flex items-center justify-center rounded-sm">
-              <Truck size={18} className="text-black" />
-            </div>
-            <span className="font-bold tracking-tighter text-xl text-white">
-              SUPPLY TRACKER
-            </span>
-          </div>
-
+        <Logo size="lg" showText dark />
           {/* CHANGE 2: nav links now use .nav-link class for bold + underline on hover */}
           <div className="hidden md:flex gap-10 text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em]">
             <a href="#process" className="nav-link">How it Works</a>

@@ -1,7 +1,8 @@
 // client/src/pages/Auth/RegisterShop.jsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, Truck, Store, Phone, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, Store, Phone, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import Logo from '../../components/common/common/Logo';
 import useAuthStore from '../../stores/authStore';
 import { authAPI } from '../../services/api';
 
@@ -128,12 +129,7 @@ export default function RegisterShop() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <Link to="/" className="inline-flex items-center gap-3 group">
-            <div className="w-9 h-9 bg-white/8 border border-white/10 rounded-xl flex items-center justify-center group-hover:bg-white/12 transition-colors">
-              <Truck size={16} className="text-white" strokeWidth={1.5} />
-            </div>
-            <span className="text-white/80 font-semibold tracking-[0.18em] text-[11px] uppercase">Supply Tracker</span>
-          </Link>
+          <Logo linkTo="/" size="lg" showText dark />
         </div>
 
         {/* Main content */}
@@ -192,11 +188,8 @@ export default function RegisterShop() {
 
         {/* Top nav */}
         <div className="flex items-center justify-between px-8 py-5 lg:px-12">
-          <Link to="/" className="lg:hidden inline-flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-slate-950 rounded-lg flex items-center justify-center">
-              <Truck size={14} className="text-white" strokeWidth={1.5} />
-            </div>
-            <span className="font-bold tracking-[0.15em] text-[11px] uppercase text-slate-800">Supply Tracker</span>
+          <Link to="/" className="lg:hidden">
+            <Logo size="md" showText />
           </Link>
           <div className="hidden lg:block" />
 
