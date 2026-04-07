@@ -80,8 +80,6 @@ app.use('/api/invites', inviteRoutes);
 
 app.use(errorHandler);
 
-// Socket.IO — only room join/leave here.
-// Location updates go through HTTP POST /api/driver/location (saves to DB + emits here)
 io.on('connection', (socket) => {
   logger.info(`Socket connected: ${socket.id}`);
 

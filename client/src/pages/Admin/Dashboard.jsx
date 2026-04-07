@@ -1,8 +1,8 @@
+// client/src/pages/Admin/Dashboard.jsx - ENHANCED
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Users, Truck, Activity, ArrowUpRight } from 'lucide-react';
+import { Package, Users, Truck, Activity, ArrowUpRight, ShieldCheck, Zap } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import Card from '../../components/common/Card';
 import { analyticsAPI, shipmentAPI, adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
@@ -11,9 +11,7 @@ export default function AdminDashboard() {
   const [userStats, setUserStats] = useState({ total: 0, drivers: 0 });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -33,50 +31,75 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <DashboardLayout><div className="p-8 text-center text-zinc-500">Loading admin panel...</div></DashboardLayout>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="w-12 h-12 border-2 border-zinc-800 border-t-white rounded-full animate-spin" />
+      </div>
+    </DashboardLayout>
+  );
 
   return (
-    <DashboardLayout title="Command Center">
+    <DashboardLayout title="System Overview">
+      <style>{`
+        @keyframes subtlePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-live { animation: subtlePulse 2s infinite; }
+      `}</style>
+
       {/* High-Level Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <MetricCard label="Total Shipments" value={stats.totalShipments} icon={Package} trend="+12%" />
-        <MetricCard label="System Users" value={userStats.total} icon={Users} />
-        <MetricCard label="Active Drivers" value={userStats.drivers} icon={Truck} active />
-        <MetricCard label="Avg ETA" value={`${stats.averageETA.toFixed(0)} min`} icon={Activity} />
+        <MetricCard label="Global Shipments" value={stats.totalShipments} icon={Package} trend="+12.4%" />
+        <MetricCard label="Active Personnel" value={userStats.total} icon={Users} />
+        <MetricCard label="Verified Fleet" value={userStats.drivers} icon={Truck} active />
+        <MetricCard label="Precision ETA" value={`${stats.averageETA.toFixed(0)}m`} icon={Zap} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Feed */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold tracking-tight">Live Operations</h2>
-            <Link to="/admin/shipments" className="text-xs font-bold border-b border-black pb-0.5 hover:opacity-50 transition-opacity">
-              FULL MANIFEST
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between p-4 bg-zinc-900 border border-white/5 rounded-t-lg">
+            <div className="flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h2 className="text-sm font-bold tracking-widest uppercase text-white">Live Operations Manifest</h2>
+            </div>
+            <Link to="/admin/shipments" className="text-[10px] font-black tracking-tighter text-zinc-500 hover:text-white transition-colors">
+              VIEW FULL LOGS
             </Link>
           </div>
 
-          <div className="bg-white border border-zinc-200">
-            <table className="w-full text-sm">
+          <div className="bg-zinc-900/50 border border-white/5 rounded-b-lg overflow-hidden backdrop-blur-sm">
+            <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50 text-left">
-                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">ID</th>
-                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Route</th>
-                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Driver</th>
-                  <th className="py-3 px-4 font-bold text-xs uppercase text-zinc-500 tracking-wider">Status</th>
+                <tr className="border-b border-white/5 bg-white/[0.02]">
+                  <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Hash ID</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Trajectory</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Operator</th>
+                  <th className="py-4 px-6 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-white/5">
                 {recentShipments.map((s) => (
-                  <tr key={s._id} className="hover:bg-zinc-50/80">
-                    <td className="py-3 px-4 font-mono text-xs">{s.trackingNumber.slice(-8)}</td>
-                    <td className="py-3 px-4 text-xs font-medium">{s.from.split(',')[0]} → {s.to.split(',')[0]}</td>
-                    <td className="py-3 px-4 text-xs text-zinc-500">{s.assignedDriver?.displayName || '—'}</td>
-                    <td className="py-3 px-4">
-                      <span className={`w-2 h-2 rounded-full inline-block mr-2 ${
-                        s.status === 'in_transit' ? 'bg-green-500 animate-pulse' : 
-                        s.status === 'pending' ? 'bg-yellow-500' : 'bg-zinc-300'
-                      }`}></span>
-                      <span className="text-xs uppercase font-bold tracking-wide">{s.status.replace('_', ' ')}</span>
+                  <tr key={s._id} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="py-4 px-6 font-mono text-xs text-zinc-400">{s.trackingNumber.slice(-8).toUpperCase()}</td>
+                    <td className="py-4 px-6 text-xs text-white font-medium">
+                      {s.from.split(',')[0]} <span className="text-zinc-600">→</span> {s.to.split(',')[0]}
+                    </td>
+                    <td className="py-4 px-6 text-xs text-zinc-400 group-hover:text-white transition-colors">
+                      {s.assignedDriver?.displayName || 'UNASSIGNED'}
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="inline-flex items-center gap-2 px-2 py-1 rounded-sm bg-zinc-800/50 border border-white/5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          s.status === 'in_transit' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse' : 
+                          s.status === 'pending' ? 'bg-amber-500' : 'bg-zinc-500'
+                        }`} />
+                        <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-tight">
+                          {s.status.replace('_', ' ')}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -85,34 +108,26 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Side Panel / System Status */}
+        {/* Intelligence Panel */}
         <div className="space-y-6">
-           <div className="bg-black text-white p-6 border border-zinc-800">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">System Health</h3>
-              <div className="space-y-4">
-                 <div className="flex justify-between items-center">
-                    <span className="text-sm">API Latency</span>
-                    <span className="font-mono text-green-400">45ms</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-sm">AI Prediction</span>
-                    <span className="font-mono text-green-400">Online</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-sm">Active Nodes</span>
-                    <span className="font-mono text-white">4/4</span>
-                 </div>
+           <div className="bg-white border-2 border-black p-6 rounded-lg relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-2 opacity-5">
+                <ShieldCheck size={80} />
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Core Telemetry</h3>
+              <div className="space-y-4 relative z-10">
+                 <SystemMetric label="API LATENCY" value="42ms" color="text-emerald-600" />
+                 <SystemMetric label="AI PREDICTION" value="ACTIVE" color="text-emerald-600" />
+                 <SystemMetric label="NODES ONLINE" value="12 / 12" />
               </div>
            </div>
            
-           <div className="border border-zinc-200 bg-white p-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-4">Quick Links</h3>
-              <div className="grid grid-cols-2 gap-2">
-                 <QuickLink to="/admin/users" label="Users" />
-                 <QuickLink to="/admin/drivers" label="Fleet" />
-                 <QuickLink to="/admin/shipments/create" label="Create" />
-                 <QuickLink to="/admin/analytics" label="Reports" />
-                 <QuickLink to="/admin/shipments" label="Shipments" />
+           <div className="border border-white/10 bg-zinc-900 p-6 rounded-lg">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-6">Quick Directives</h3>
+              <div className="grid grid-cols-1 gap-2">
+                 <AdminAction to="/admin/shipments/create" label="Deploy New Shipment" />
+                 <AdminAction to="/admin/drivers" label="Fleet Management" />
+                 <AdminAction to="/admin/analytics" label="Intelligence Reports" />
               </div>
            </div>
         </div>
@@ -123,22 +138,45 @@ export default function AdminDashboard() {
 
 function MetricCard({ label, value, icon: Icon, trend, active }) {
   return (
-    <div className={`p-6 border ${active ? 'bg-black text-white border-black' : 'bg-white border-zinc-200'}`}>
+    <div className={`p-6 rounded-lg border transition-all duration-300 ${
+      active 
+        ? 'bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' 
+        : 'bg-zinc-900 border-white/5 hover:border-white/20'
+    }`}>
       <div className="flex justify-between items-start mb-4">
-        <Icon size={20} className={active ? 'text-zinc-400' : 'text-zinc-400'} />
-        {trend && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-sm">{trend}</span>}
+        <div className={`p-2 rounded-sm ${active ? 'bg-zinc-100' : 'bg-white/5'}`}>
+          <Icon size={18} className={active ? 'text-black' : 'text-zinc-400'} />
+        </div>
+        {trend && (
+          <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+            {trend}
+          </span>
+        )}
       </div>
-      <div className="text-3xl font-bold tracking-tighter mb-1">{value}</div>
-      <div className={`text-xs font-bold uppercase tracking-wider ${active ? 'text-zinc-500' : 'text-zinc-400'}`}>{label}</div>
+      <div className={`text-4xl font-bold tracking-tighter mb-1 ${active ? 'text-black' : 'text-white'}`}>
+        {value}
+      </div>
+      <div className={`text-[10px] font-bold uppercase tracking-[0.2em] ${active ? 'text-zinc-500' : 'text-zinc-500'}`}>
+        {label}
+      </div>
     </div>
   );
 }
 
-function QuickLink({ to, label }) {
+function SystemMetric({ label, value, color = "text-black" }) {
   return (
-    <Link to={to} className="flex items-center justify-between p-3 border border-zinc-100 hover:border-black hover:bg-zinc-50 transition-all group">
-      <span className="text-xs font-bold">{label}</span>
-      <ArrowUpRight size={14} className="text-zinc-300 group-hover:text-black" />
+    <div className="flex justify-between items-center border-b border-zinc-100 pb-2">
+      <span className="text-[10px] font-bold text-zinc-400 tracking-widest uppercase">{label}</span>
+      <span className={`font-mono text-xs font-bold ${color}`}>{value}</span>
+    </div>
+  );
+}
+
+function AdminAction({ to, label }) {
+  return (
+    <Link to={to} className="flex items-center justify-between p-3 border border-white/5 rounded-sm hover:bg-white hover:text-black transition-all group">
+      <span className="text-xs font-bold uppercase tracking-tight">{label}</span>
+      <ArrowUpRight size={14} className="text-zinc-600 group-hover:text-black" />
     </Link>
   );
 }

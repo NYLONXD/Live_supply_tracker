@@ -14,45 +14,56 @@ export default function GooglePlacesInput({
   required = false,
   disabled = false,
 }) {
-  const inputRef = useRef(null);
+  const inputRef       = useRef(null);
+  const autocompleteRef = useRef(null);
 
+  // ── Keep a stable ref to the callback so the autocomplete listener
+  //    never needs to be torn down / re-created when the parent re-renders.
+  const onPlaceSelectRef = useRef(onPlaceSelect);
   useEffect(() => {
-    let autocomplete;
+    onPlaceSelectRef.current = onPlaceSelect;
+  }, [onPlaceSelect]);
+
+  // ── Mount autocomplete exactly ONCE ───────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
 
     loadGoogleMaps(GOOGLE_MAPS_API_KEY)
       .then((google) => {
-        if (!inputRef.current) return;
+        if (cancelled || !inputRef.current) return;
 
-        autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+        const ac = new google.maps.places.Autocomplete(inputRef.current, {
           fields: ['formatted_address', 'geometry', 'name'],
         });
 
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          const lat = place.geometry?.location?.lat?.();
-          const lng = place.geometry?.location?.lng?.();
+        autocompleteRef.current = ac;
 
-          if (lat === undefined || lng === undefined) {
-            return;
-          }
+        ac.addListener('place_changed', () => {
+          const place = ac.getPlace();
+          const lat   = place.geometry?.location?.lat?.();
+          const lng   = place.geometry?.location?.lng?.();
 
-          onPlaceSelect?.({
-            address: place.formatted_address || place.name || '',
-            lat,
-            lng,
-          });
+          if (lat === undefined || lng === undefined) return;
+
+          const address = place.formatted_address || place.name || '';
+
+          // Fire the parent's onPlaceSelect via the stable ref
+          onPlaceSelectRef.current?.({ address, lat, lng });
         });
       })
       .catch(() => {
-        // Keep manual text entry working if Google Maps fails to load.
+        // Google Maps failed to load — manual text entry still works.
       });
 
     return () => {
-      if (autocomplete && window.google?.maps?.event) {
-        window.google.maps.event.clearInstanceListeners(autocomplete);
+      cancelled = true;
+      // Clean up listener when the input unmounts (not on every render)
+      if (autocompleteRef.current && window.google?.maps?.event) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
       }
     };
-  }, [onPlaceSelect]);
+  }, []); 
 
   return (
     <Input

@@ -1,11 +1,8 @@
-// client/src/utils/constants.js
 
-// API Configuration
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 
-// User Roles
 export const ROLES = {
   USER: 'user',
   DRIVER: 'driver',
