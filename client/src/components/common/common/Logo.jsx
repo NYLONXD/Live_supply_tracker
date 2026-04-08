@@ -2,16 +2,6 @@
 import { Link } from 'react-router-dom';
 import logoImg from '../../../assets/TrackEdge1.png';
 
-/**
- * Logo component — replaces the Truck SVG everywhere.
- *
- * Props:
- *  size       — 'sm' | 'md' | 'lg'   (default 'md')
- *  showText   — show "SUPPLY TRACKER" text beside the logo (default true)
- *  linkTo     — wraps in a <Link> if provided
- *  className  — extra classes on the wrapper
- *  dark       — true = white text (for dark backgrounds)
- */
 export default function Logo({
   size = 'lg',
   showText = true,

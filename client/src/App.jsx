@@ -5,11 +5,11 @@ import { Toaster } from 'react-hot-toast';
 import useAuthStore from './stores/authStore';
 import PageLoader from '../src/components/common/common/PageLoader';
 
-// Public Pages
+// Public
 import Landing          from './pages/Public/Landing';
 import PublicTrack      from './pages/Public/Track';
 
-// Auth Pages
+// Auth
 import Login            from './pages/Auth/Login';
 import Signup           from './pages/Auth/RegisterShop';
 import RegisterShop     from './pages/Auth/RegisterShop';
@@ -18,7 +18,7 @@ import ResetPassword    from './pages/Auth/ResetPassword';
 import VerifyEmail      from './pages/Auth/VerifyEmail';
 import JoinOrg          from './pages/Auth/JoinOrg';
 
-// Admin Pages
+// Admin
 import AdminDashboard      from './pages/Admin/Dashboard';
 import AllShipments        from './pages/Admin/AllShipments';
 import Users               from './pages/Admin/Users';
@@ -26,11 +26,19 @@ import Drivers             from './pages/Admin/Drivers';
 import Analytics           from './pages/Admin/Analytics';
 import AdminCreateShipment from './pages/Admin/CreateShipment';
 
-// Driver Pages
+// Driver
 import DriverDashboard from './pages/Driver/Dashboard';
 import MyDeliveries    from './pages/Driver/MyDeliveries';
 import Navigation      from './pages/Driver/Navigation';
 
+// Notifications
+import Notifications from './pages/Notifications/Notifications';
+
+// Support
+import Support from './pages/support/Support';
+import { SupportTicketList, SupportTicketDetail } from './pages/support/SupportTickets';
+
+// ── Protected route wrapper ────────────────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, initialized, loading } = useAuthStore();
 
@@ -56,7 +64,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
-// ─── App ─────────────────────────────────────────────────────────────────────
+// ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
 
@@ -66,7 +74,6 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Page-transition overlay — must be inside BrowserRouter to use useLocation */}
       <PageLoader />
 
       <Toaster
@@ -75,35 +82,31 @@ function App() {
           duration: 3000,
           style: {
             background: '#000000',
-            color: '#ffffff',
-            border: '1px solid #333',
+            color:      '#ffffff',
+            border:     '1px solid #333',
             borderRadius: '2px',
           },
-          success: {
-            iconTheme: { primary: '#ffffff', secondary: '#000000' },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#ffffff' },
-          },
+          success: { iconTheme: { primary: '#ffffff', secondary: '#000000' } },
+          error:   { iconTheme: { primary: '#ef4444', secondary: '#ffffff' } },
         }}
       />
 
       <Routes>
-        {/* ── Public ─────────────────────────────────────────────────────── */}
-        <Route path="/"                        element={<Landing />} />
-        <Route path="/track"                   element={<PublicTrack />} />
-        <Route path="/track/:trackingNumber"   element={<PublicTrack />} />
+        {/* ── Public ──────────────────────────────────────────────────────── */}
+        <Route path="/"                      element={<Landing />} />
+        <Route path="/track"                 element={<PublicTrack />} />
+        <Route path="/track/:trackingNumber" element={<PublicTrack />} />
 
-        {/* ── Auth ───────────────────────────────────────────────────────── */}
-        <Route path="/login"                   element={<Login />} />
-        <Route path="/signup"                  element={<Signup />} />
-        <Route path="/register-shop"           element={<RegisterShop />} />
-        <Route path="/forgot-password"         element={<ForgetPassword />} />
-        <Route path="/reset-password/:token"   element={<ResetPassword />} />
-        <Route path="/join/:token"             element={<JoinOrg />} />
-        <Route path="/verify-email"            element={<VerifyEmail />} />
+        {/* ── Auth ────────────────────────────────────────────────────────── */}
+        <Route path="/login"                 element={<Login />} />
+        <Route path="/signup"                element={<Signup />} />
+        <Route path="/register-shop"         element={<RegisterShop />} />
+        <Route path="/forgot-password"       element={<ForgetPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/join/:token"           element={<JoinOrg />} />
+        <Route path="/verify-email"          element={<VerifyEmail />} />
 
-        {/* ── Admin ──────────────────────────────────────────────────────── */}
+        {/* ── Admin ───────────────────────────────────────────────────────── */}
         <Route path="/admin/dashboard"
           element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/shipments/create"
@@ -117,7 +120,7 @@ function App() {
         <Route path="/admin/analytics"
           element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
 
-        {/* ── Driver ─────────────────────────────────────────────────────── */}
+        {/* ── Driver ──────────────────────────────────────────────────────── */}
         <Route path="/driver/dashboard"
           element={<ProtectedRoute allowedRoles={['driver']}><DriverDashboard /></ProtectedRoute>} />
         <Route path="/driver/deliveries"
@@ -125,7 +128,39 @@ function App() {
         <Route path="/driver/navigate/:id"
           element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
 
-        {/* ── Catch-all ──────────────────────────────────────────────────── */}
+        {/* ── Notifications (admin + driver) ───────────────────────────────── */}
+        <Route path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Support (admin + driver + user) ─────────────────────────────── */}
+        <Route path="/support"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+              <Support />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/support/tickets"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+              <SupportTicketList />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/support/tickets/:id"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+              <SupportTicketDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ── Catch-all ────────────────────────────────────────────────────── */}
         <Route path="*" element={<Navigate to="/track" replace />} />
       </Routes>
     </BrowserRouter>

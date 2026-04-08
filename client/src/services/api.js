@@ -7,9 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // ─── Response interceptor ─────────────────────────────────────────────────────
@@ -33,7 +31,7 @@ api.interceptors.response.use(
   }
 );
 
-// ─── Auth APIs ────────────────────────────────────────────────────────────────
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 export const authAPI = {
   login:               (data)        => api.post('/api/auth/login', data),
   register:            (data)        => api.post('/api/auth/register', data),
@@ -42,14 +40,12 @@ export const authAPI = {
   forgotPassword:      (data)        => api.post('/api/auth/forgot-password', data),
   resetPassword:       (token, data) => api.post(`/api/auth/reset-password/${token}`, data),
   logout:              ()            => api.post('/api/auth/logout'),
-  // ── Email verification ────────────────────────────────────────────────────
   verifyEmail:         (data)        => api.post('/api/auth/verify-email', data),
   resendOTP:           ()            => api.post('/api/auth/resend-otp'),
-  // ── Profile update ────────────────────────────────────────────────────────
   updateProfile:       (data)        => api.put('/api/auth/profile', data),
 };
 
-// ─── Shipment APIs ────────────────────────────────────────────────────────────
+// ─── Shipments ────────────────────────────────────────────────────────────────
 export const shipmentAPI = {
   getAll:   (params)         => api.get('/api/shipments', { params }),
   getById:  (id)             => api.get(`/api/shipments/${id}`),
@@ -59,7 +55,7 @@ export const shipmentAPI = {
   track:    (trackingNumber) => api.get(`/api/track/${trackingNumber}`),
 };
 
-// ─── Admin APIs ───────────────────────────────────────────────────────────────
+// ─── Admin ────────────────────────────────────────────────────────────────────
 export const adminAPI = {
   getAllUsers:       ()                     => api.get('/api/admin/users'),
   getAllDrivers:     ()                     => api.get('/api/admin/drivers'),
@@ -69,16 +65,16 @@ export const adminAPI = {
   toggleUserStatus: (userId)               => api.patch(`/api/admin/users/${userId}/toggle`),
 };
 
-// ─── Invite APIs ──────────────────────────────────────────────────────────────
+// ─── Invites ──────────────────────────────────────────────────────────────────
 export const inviteAPI = {
-  create:   (data)  => api.post('/api/invites', data),
-  getAll:   ()      => api.get('/api/invites'),
-  revoke:   (token) => api.delete(`/api/invites/${token}`),
-  validate: (token) => api.get(`/api/invites/${token}/validate`),
+  create:   (data)        => api.post('/api/invites', data),
+  getAll:   ()            => api.get('/api/invites'),
+  revoke:   (token)       => api.delete(`/api/invites/${token}`),
+  validate: (token)       => api.get(`/api/invites/${token}/validate`),
   accept:   (token, data) => api.post(`/api/invites/${token}/accept`, data),
 };
 
-// ─── Driver APIs ──────────────────────────────────────────────────────────────
+// ─── Driver ───────────────────────────────────────────────────────────────────
 export const driverAPI = {
   getMyShipments: (params)             => api.get('/api/driver/shipments', { params }),
   updateStatus:   (shipmentId, status) => api.put(`/api/driver/shipments/${shipmentId}/status`, { status }),
@@ -86,13 +82,13 @@ export const driverAPI = {
   addNotes:       (shipmentId, notes)  => api.put(`/api/driver/shipments/${shipmentId}/notes`, { notes }),
 };
 
-// ─── Analytics APIs ───────────────────────────────────────────────────────────
+// ─── Analytics ────────────────────────────────────────────────────────────────
 export const analyticsAPI = {
   getOverview: () => api.get('/api/analytics'),
   getPerDay:   () => api.get('/api/analytics/per-day'),
 };
 
-// ─── Tasks APIs ───────────────────────────────────────────────────────────────
+// ─── Tasks ────────────────────────────────────────────────────────────────────
 export const tasksAPI = {
   getAll:       ()           => api.get('/api/tasks'),
   create:       (data)       => api.post('/api/tasks', data),
@@ -101,15 +97,37 @@ export const tasksAPI = {
   updateStatus: (id, status) => api.patch(`/api/tasks/${id}/status`, { status }),
 };
 
-// ─── AI APIs ──────────────────────────────────────────────────────────────────
+// ─── AI ───────────────────────────────────────────────────────────────────────
 export const aiAPI = {
   previewETA: (data) => api.post('/api/ai/preview-eta', data),
 };
 
-// ─── Organization APIs ────────────────────────────────────────────────────────
+// ─── Organization ─────────────────────────────────────────────────────────────
 export const organizationAPI = {
   getMyOrg:    ()     => api.get('/api/organizations/me'),
   updateMyOrg: (data) => api.put('/api/organizations/me', data),
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notificationAPI = {
+  getAll:       (params) => api.get('/api/notifications', { params }),
+  getUnreadCount: ()     => api.get('/api/notifications/unread-count'),
+  markRead:     (id)     => api.patch(`/api/notifications/${id}/read`),
+  markAllRead:  ()       => api.patch('/api/notifications/read-all'),
+  delete:       (id)     => api.delete(`/api/notifications/${id}`),
+  clearRead:    ()       => api.delete('/api/notifications'),
+};
+
+// ─── Support ──────────────────────────────────────────────────────────────────
+export const supportAPI = {
+  createTicket:  (data)        => api.post('/api/support', data),
+  getAll:        (params)      => api.get('/api/support', { params }),
+  getTicket:     (id)          => api.get(`/api/support/${id}`),
+  reply:         (id, content) => api.post(`/api/support/${id}/reply`, { content }),
+  updateStatus:  (id, status)  => api.patch(`/api/support/${id}/status`, { status }),
+  rateTicket:    (id, rating)  => api.patch(`/api/support/${id}/rate`, { rating }),
+  getShipments:  ()            => api.get('/api/support/shipments'),
+  getStats:      ()            => api.get('/api/support/stats'),
 };
 
 export default api;
