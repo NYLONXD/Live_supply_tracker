@@ -159,7 +159,7 @@ export default function Login() {
               <p className="text-zinc-200 text-xs font-medium leading-snug">
                 "Reduced our tracking overhead by 60%."
               </p>
-              <p className="text-zinc-500 text-[11px] mt-0.5">Rajesh Sharma · FastFreight India</p>
+              <p className="text-zinc-500 text-[11px] mt-0.5">Himanshu Jha · FastFreight India</p>
             </div>
           </div>
         </div>

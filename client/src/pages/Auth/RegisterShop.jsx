@@ -176,7 +176,7 @@ export default function RegisterShop() {
           <div className="flex items-center gap-2.5 mt-3">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-violet-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">R</div>
             <div>
-              <div className="text-white text-[11px] font-semibold">Rajesh Sharma</div>
+              <div className="text-white text-[11px] font-semibold">Himanshu Jha</div>
               <div className="text-slate-500 text-[10px]">Ops Manager · FastFreight India</div>
             </div>
           </div>
