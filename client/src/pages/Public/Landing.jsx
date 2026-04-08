@@ -25,7 +25,7 @@ import Logo from '../../components/common/common/Logo';
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-100 selection:text-black">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-100 selection:text-black overflow-x-hidden">
       {/* Keyframe animation injected via a style tag */}
       <style>{`
         @keyframes modernFade {
@@ -186,7 +186,7 @@ export default function Landing() {
 
       {/* --- Stats Banner --- */}
       <section className="py-10 border-y border-white/10 bg-zinc-900/30 overflow-hidden">
-        <div className="stats-ticker flex items-center">
+        <div className="stats-ticker flex items-center will-change-transform">
           {[0, 1].map((copy) => (
             <div key={copy} className="flex items-center shrink-0" aria-hidden={copy === 1}>
               <Stat label="ETA Accuracy"  value="±2m"   sub="Traffic-Aware"  />

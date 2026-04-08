@@ -98,7 +98,7 @@ export default function PublicTrack() {
   const showLanding = !loading && !shipment && !error;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-100 selection:text-black">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-zinc-100 selection:text-black overflow-x-hidden">
       <style>{`
         @keyframes trackFade {
           0%   { opacity: 0; transform: translateY(24px); }
@@ -128,7 +128,6 @@ export default function PublicTrack() {
           <img src={craneImg} alt="" className="w-full h-full object-contain object-right-top" />
         </div>
 
-        {/* Subtle grid overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none" />
 
         <div className="max-w-6xl mx-auto relative z-10 animate-track-fade">

@@ -127,7 +127,7 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
   if (user.emailOTP !== hashOTP(otp.toString()))
     return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
 
-  // Mark verified, clear OTP fields
+ 
   user.isEmailVerified = true;
   user.emailOTP        = undefined;
   user.emailOTPExpire  = undefined;
