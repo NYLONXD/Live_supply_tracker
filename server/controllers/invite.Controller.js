@@ -1,10 +1,11 @@
+// server/controllers/invite.Controller.js
 const crypto   = require('crypto');
 const bcrypt   = require('bcryptjs');
 const Invite   = require('../models/Invite.models');
 const User     = require('../models/user.models');
 const asyncHandler  = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
-const { sendInviteEmail } = require('../utils/Brevo.utils');
+const { sendInviteEmail } = require('../utils/email.utils'); // ← changed
 const logger   = require('../utils/logger.utils');
 
 const getCookieOptions = () => ({
@@ -34,7 +35,6 @@ exports.createInvite = asyncHandler(async (req, res) => {
 
   const inviteUrl = `${process.env.CLIENT_URL}/join/${token}`;
 
-  // Send invite email via Brevo if email provided
   if (invite.email) {
     sendInviteEmail({
       to:          invite.email,
@@ -86,7 +86,6 @@ exports.validateInvite = asyncHandler(async (req, res) => {
 });
 
 // ─── POST /api/invites/:token/accept ─────────────────────────────────────────
-// Invited users are auto-verified — the invite link proves email ownership.
 exports.acceptInvite = asyncHandler(async (req, res) => {
   const { displayName, email, password, phone } = req.body;
 
@@ -131,7 +130,7 @@ exports.acceptInvite = asyncHandler(async (req, res) => {
     phone:           phone?.trim() || undefined,
     role:            invite.role,
     organizationId:  invite.organizationId,
-    isEmailVerified: true, // ← auto-verified: invite link proves email ownership
+    isEmailVerified: true,
   });
 
   invite.usedAt = new Date();

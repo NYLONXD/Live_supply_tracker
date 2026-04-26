@@ -5,7 +5,7 @@ const Organization = require('../models/Organization.models');
 const User = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
-const { generateOTP, sendOTPEmail } = require('../utils/Brevo.utils');
+const { generateOTP, sendOTPEmail } = require('../utils/email.utils'); // ← changed
 const logger = require('../utils/logger.utils');
 
 const getCookieOptions = () => ({

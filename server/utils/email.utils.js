@@ -1,15 +1,14 @@
-const axios = require('axios');
+//   RESEND_API_KEY   — your Resend API key
+//   RESEND_FROM      — verified sender e.g. "Supply Tracker <noreply@yourdomain.com>"
+//                      (use "onboarding@resend.dev" only for local dev/testing)
+
+const { Resend } = require('resend');
 const logger = require('./logger.utils');
 
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const brevo = axios.create({
-  baseURL: 'https://api.brevo.com/v3',
-  headers: {
-    'api-key': process.env.BREVO_API_KEY,
-    'Content-Type': 'application/json',
-  },
-});
+const FROM_ADDRESS =
+  process.env.RESEND_FROM || 'Supply Tracker <onboarding@resend.dev>';
 
 // ─── Generate a 6-digit OTP ───────────────────────────────────────────────────
 const generateOTP = () =>
@@ -54,16 +53,22 @@ const sendOTPEmail = async ({ to, name, otp }) => {
     </p>`;
 
   try {
-    await brevo.post('/smtp/email', {
-      sender: { name: 'Supply Tracker', email: process.env.BREVO_SENDER_EMAIL },
-      to: [{ email: to }],
+    const { error } = await resend.emails.send({
+      from:    FROM_ADDRESS,
+      to:      [to],
       subject: `${otp} — Your Supply Tracker verification code`,
-      htmlContent: emailWrapper(content),
+      html:    emailWrapper(content),
     });
+
+    if (error) {
+      logger.error(`Resend OTP email failed: ${error.message}`);
+      return false;
+    }
+
     logger.info(`OTP email sent to ${to}`);
     return true;
-  } catch (error) {
-    logger.error(`Brevo OTP email failed: ${error.response?.data?.message || error.message}`);
+  } catch (err) {
+    logger.error(`Resend OTP email exception: ${err.message}`);
     return false;
   }
 };
@@ -85,16 +90,22 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     </p>`;
 
   try {
-    await brevo.post('/smtp/email', {
-      sender: { name: 'Supply Tracker', email: process.env.BREVO_SENDER_EMAIL },
-      to: [{ email: to }],
+    const { error } = await resend.emails.send({
+      from:    FROM_ADDRESS,
+      to:      [to],
       subject: 'Password Reset Request — Supply Tracker',
-      htmlContent: emailWrapper(content),
+      html:    emailWrapper(content),
     });
+
+    if (error) {
+      logger.error(`Resend password reset email failed: ${error.message}`);
+      return false;
+    }
+
     logger.info(`Password reset email sent to ${to}`);
     return true;
-  } catch (error) {
-    logger.error(`Brevo password reset email failed: ${error.response?.data?.message || error.message}`);
+  } catch (err) {
+    logger.error(`Resend password reset email exception: ${err.message}`);
     return false;
   }
 };
@@ -117,16 +128,22 @@ const sendInviteEmail = async ({ to, inviterName, orgName, role, inviteUrl }) =>
     </p>`;
 
   try {
-    await brevo.post('/smtp/email', {
-      sender: { name: 'Supply Tracker', email: process.env.BREVO_SENDER_EMAIL },
-      to: [{ email: to }],
+    const { error } = await resend.emails.send({
+      from:    FROM_ADDRESS,
+      to:      [to],
       subject: `You've been invited to join ${orgName} on Supply Tracker`,
-      htmlContent: emailWrapper(content),
+      html:    emailWrapper(content),
     });
+
+    if (error) {
+      logger.error(`Resend invite email failed: ${error.message}`);
+      return false;
+    }
+
     logger.info(`Invite email sent to ${to}`);
     return true;
-  } catch (error) {
-    logger.error(`Brevo invite email failed: ${error.response?.data?.message || error.message}`);
+  } catch (err) {
+    logger.error(`Resend invite email exception: ${err.message}`);
     return false;
   }
 };

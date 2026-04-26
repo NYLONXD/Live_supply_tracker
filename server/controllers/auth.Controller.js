@@ -4,7 +4,7 @@ const bcrypt    = require('bcryptjs');
 const User      = require('../models/user.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
-const { generateOTP, sendOTPEmail, sendPasswordResetEmail } = require('../utils/Brevo.utils');
+const { generateOTP, sendOTPEmail, sendPasswordResetEmail } = require('../utils/email.utils'); // ← changed
 const logger    = require('../utils/logger.utils');
 
 // ─── Cookie options ────────────────────────────────────────────────────────────
@@ -34,7 +34,6 @@ const sendAuthResponse = (res, statusCode, user, extra = {}) => {
 const hashOTP = (otp) => crypto.createHash('sha256').update(otp).digest('hex');
 
 // ─── Register (regular user / customer) ──────────────────────────────────────
-// NOTE: Shop admins use POST /api/organizations/register
 exports.register = asyncHandler(async (req, res) => {
   const { email, password, displayName, phone } = req.body;
 
@@ -54,10 +53,9 @@ exports.register = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Generate OTP before creating user
-  const otp     = generateOTP();
+  const otp       = generateOTP();
   const hashedOTP = hashOTP(otp);
-  const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
 
   const user = await User.create({
     email:           email.toLowerCase(),
@@ -70,7 +68,6 @@ exports.register = asyncHandler(async (req, res) => {
     emailOTPExpire:  otpExpire,
   });
 
-  // Send OTP — fire-and-forget (don't fail registration if email fails)
   sendOTPEmail({ to: user.email, name: user.displayName, otp }).catch((err) => {
     logger.error(`Failed to send OTP to ${user.email}: ${err.message}`);
   });
@@ -102,14 +99,12 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 // ─── Verify Email (OTP) ───────────────────────────────────────────────────────
-// POST /api/auth/verify-email   { otp: "123456" }   (requires: logged-in cookie)
 exports.verifyEmail = asyncHandler(async (req, res) => {
   const { otp } = req.body;
 
   if (!otp || otp.toString().length !== 6)
     return res.status(400).json({ message: 'A valid 6-digit OTP is required' });
 
-  // Re-fetch with hidden fields
   const user = await User.findById(req.user._id).select('+emailOTP +emailOTPExpire');
 
   if (!user)
@@ -127,7 +122,6 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
   if (user.emailOTP !== hashOTP(otp.toString()))
     return res.status(400).json({ message: 'Invalid OTP. Please try again.' });
 
- 
   user.isEmailVerified = true;
   user.emailOTP        = undefined;
   user.emailOTPExpire  = undefined;
@@ -135,7 +129,6 @@ exports.verifyEmail = asyncHandler(async (req, res) => {
 
   logger.info(`Email verified for: ${user.email}`);
 
-  // Return updated user data
   return res.status(200).json({
     message:         'Email verified successfully',
     isEmailVerified: true,
@@ -157,7 +150,7 @@ exports.resendOTP = asyncHandler(async (req, res) => {
   }
 
   const otp = generateOTP();
-  user.emailOTP = hashOTP(otp);
+  user.emailOTP       = hashOTP(otp);
   user.emailOTPExpire = new Date(Date.now() + 10 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
@@ -202,20 +195,20 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  if (displayName)   user.displayName  = displayName.trim();
-  if (phone)         user.phone        = phone.trim();
-  if (vehicleInfo)   user.vehicleInfo  = vehicleInfo;
+  if (displayName)   user.displayName   = displayName.trim();
+  if (phone)         user.phone         = phone.trim();
+  if (vehicleInfo)   user.vehicleInfo   = vehicleInfo;
   if (vehicleNumber) user.vehicleNumber = vehicleNumber;
 
   await user.save();
   logger.info(`Profile updated for: ${user.email}`);
   res.json({
-    _id:         user._id,
-    email:       user.email,
-    displayName: user.displayName,
-    phone:       user.phone,
-    role:        user.role,
-    vehicleInfo: user.vehicleInfo,
+    _id:          user._id,
+    email:        user.email,
+    displayName:  user.displayName,
+    phone:        user.phone,
+    role:         user.role,
+    vehicleInfo:  user.vehicleInfo,
     vehicleNumber: user.vehicleNumber,
   });
 });
@@ -231,12 +224,11 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email: email?.toLowerCase() });
 
-  // Always return 200 — don't leak whether email exists
   if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' });
 
   const token = crypto.randomBytes(32).toString('hex');
   user.resetPasswordToken  = crypto.createHash('sha256').update(token).digest('hex');
-  user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 min
+  user.resetPasswordExpire = Date.now() + 30 * 60 * 1000;
   await user.save({ validateBeforeSave: false });
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
