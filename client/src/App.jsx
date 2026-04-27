@@ -31,6 +31,12 @@ import DriverDashboard from './pages/Driver/Dashboard';
 import MyDeliveries    from './pages/Driver/MyDeliveries';
 import Navigation      from './pages/Driver/Navigation';
 
+// User
+import UserDashboard   from './pages/User/Dashboard';
+import MyShipments     from './pages/User/MyShipments';
+import CreateShipment  from './pages/User/CreateShipment';
+import TrackShipment   from './pages/User/TrackShipment';
+
 // Notifications
 import Notifications from './pages/Notifications/Notifications';
 
@@ -128,6 +134,16 @@ function App() {
         <Route path="/driver/navigate/:id"
           element={<ProtectedRoute allowedRoles={['driver']}><Navigation /></ProtectedRoute>} />
 
+        {/* ── User ────────────────────────────────────────────────────────── */}
+        <Route path="/user/dashboard"
+          element={<ProtectedRoute allowedRoles={['user']}><UserDashboard /></ProtectedRoute>} />
+        <Route path="/user/shipments"
+          element={<ProtectedRoute allowedRoles={['user']}><MyShipments /></ProtectedRoute>} />
+        <Route path="/user/create"
+          element={<ProtectedRoute allowedRoles={['user']}><CreateShipment /></ProtectedRoute>} />
+        <Route path="/user/track/:id"
+          element={<ProtectedRoute allowedRoles={['user']}><TrackShipment /></ProtectedRoute>} />
+
         {/* ── Notifications (admin + driver) ───────────────────────────────── */}
         <Route path="/notifications"
           element={
@@ -137,24 +153,40 @@ function App() {
           }
         />
 
-        {/* ── Support (admin + driver + user) ─────────────────────────────── */}
+        {/* ── Support ─────────────────────────────────────────────────────── */}
+        {/*
+          Ticket creation (/support): only users and drivers can raise tickets.
+          Admins are the resolvers — they should never create tickets themselves.
+          The backend also enforces this with a 403, so this is defence-in-depth.
+        */}
         <Route path="/support"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+            <ProtectedRoute allowedRoles={['user', 'driver']}>
               <Support />
             </ProtectedRoute>
           }
         />
+
+        {/*
+          Ticket list (/support/tickets): all three roles can view.
+          The SupportTicketList component already renders differently per role
+          (admin sees all org tickets; user/driver see only their own).
+        */}
         <Route path="/support/tickets"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+            <ProtectedRoute allowedRoles={['admin', 'user', 'driver']}>
               <SupportTicketList />
             </ProtectedRoute>
           }
         />
+
+        {/*
+          Ticket detail (/support/tickets/:id): all three roles can view.
+          Admin can reply and change status; user/driver can reply only.
+        */}
         <Route path="/support/tickets/:id"
           element={
-            <ProtectedRoute allowedRoles={['admin', 'driver']}>
+            <ProtectedRoute allowedRoles={['admin', 'user', 'driver']}>
               <SupportTicketDetail />
             </ProtectedRoute>
           }

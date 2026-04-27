@@ -9,9 +9,15 @@ import useAuthStore from '../../stores/authStore';
 import NotificationBell from './NotificationBell';
 
 const getMenuItems = (role) => {
-  const shared = [
-    { icon: MessageSquare, label: 'Support',  path: '/support' },
+  // Admin goes straight to the ticket *management* list — they are resolvers, not requesters.
+  // Users and drivers go to /support which is the ticket *creation* flow.
+  const adminShared = [
+    { icon: MessageSquare, label: 'Support',  path: '/support/tickets' },
     { icon: Bell,          label: 'Alerts',   path: '/notifications' },
+  ];
+
+  const memberShared = [
+    { icon: MessageSquare, label: 'Support',  path: '/support' },
   ];
 
   const menus = {
@@ -22,16 +28,33 @@ const getMenuItems = (role) => {
       { icon: Users,           label: 'User Mgmt',       path: '/admin/users' },
       { icon: Truck,           label: 'Fleet',           path: '/admin/drivers' },
       { icon: BarChart3,       label: 'Analytics',       path: '/admin/analytics' },
-      ...shared,
+      ...adminShared,
     ],
     driver: [
       { icon: LayoutDashboard, label: 'Overview',   path: '/driver/dashboard' },
       { icon: Package,         label: 'Deliveries', path: '/driver/deliveries' },
       { icon: Navigation,      label: 'Route',      path: '/driver/navigate' },
-      ...shared,
+      ...memberShared,
+    ],
+    user: [
+      { icon: LayoutDashboard, label: 'Dashboard',  path: '/user/dashboard' },
+      { icon: Plus,            label: 'New Shipment', path: '/user/create' },
+      { icon: Package,         label: 'My Shipments', path: '/user/shipments' },
+      ...memberShared,
     ],
   };
-  return menus[role] || shared;
+
+  return menus[role] || memberShared;
+};
+
+// isActive helper — handles prefix matching for section roots
+const isActivePath = (menuPath, currentPath) => {
+  if (menuPath === currentPath) return true;
+  // /support/tickets matches both /support/tickets and /support/tickets/:id
+  if (menuPath === '/support/tickets' && currentPath.startsWith('/support/tickets')) return true;
+  // /support (creation) should only exactly match — prevents admin's /support/tickets
+  // from also highlighting on /support creation page
+  return false;
 };
 
 export default function DashboardLayout({ children, title }) {
@@ -105,9 +128,7 @@ export default function DashboardLayout({ children, title }) {
             </p>
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path ||
-                (item.path === '/support' && location.pathname.startsWith('/support')) ||
-                (item.path === '/notifications' && location.pathname === '/notifications');
+              const isActive = isActivePath(item.path, location.pathname);
 
               return (
                 <Link
