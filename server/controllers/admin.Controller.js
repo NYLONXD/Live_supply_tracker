@@ -1,8 +1,9 @@
-// server/controllers/admin.Controller.js  (notification-aware)
+// server/controllers/admin.Controller.js  (notification-aware + cache-correct)
 const User         = require('../models/user.models');
 const Shipment     = require('../models/Shipment.models');
 const asyncHandler = require('../utils/asyncHandle.utils');
 const notifService = require('../services/notification.service');
+const { cache }    = require('../config/redis.config');
 const logger       = require('../utils/logger.utils');
 
 exports.getAllUsers = asyncHandler(async (req, res) => {
@@ -131,6 +132,11 @@ exports.assignDriverToShipment = asyncHandler(async (req, res) => {
   shipment.assignedDriver = driverId;
   shipment.status         = 'assigned';
   await shipment.save();
+
+  // Invalidate ALL shipment cache entries so the next fetch reflects the
+  // newly assigned driver. Without this the list page serves a stale Redis
+  // response that still shows "Unassigned".
+  await cache.delPattern('shipments:*');
 
   // Notify the assigned driver
   notifService.shipmentAssigned({

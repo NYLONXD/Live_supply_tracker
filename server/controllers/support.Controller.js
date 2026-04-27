@@ -14,8 +14,14 @@ async function getOrgAdmin(organizationId) {
 }
 
 // ── POST /api/support  ─────────────────────────────────────────────────────
-// Any authenticated user (user / driver / admin) can create a ticket
+// Only users and drivers can create tickets. Admins are the resolvers, not requesters.
 exports.createTicket = asyncHandler(async (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.status(403).json({
+      message: 'Admins cannot raise support tickets. Use your dashboard to manage tickets raised by your team.',
+    });
+  }
+
   const {
     category,
     subject,
@@ -63,17 +69,15 @@ exports.createTicket = asyncHandler(async (req, res) => {
     }],
   });
 
-  // Notify the org's admin (unless the admin themselves raised the ticket)
-  if (req.user.role !== 'admin') {
-    const admin = await getOrgAdmin(req.organizationId);
-    if (admin) {
-      notifService.supportTicketCreated({
-        organizationId: req.organizationId,
-        adminId:        admin._id,
-        ticket,
-        createdBy:      req.user._id,
-      }).catch(() => {});
-    }
+  // Notify the org's admin
+  const admin = await getOrgAdmin(req.organizationId);
+  if (admin) {
+    notifService.supportTicketCreated({
+      organizationId: req.organizationId,
+      adminId:        admin._id,
+      ticket,
+      createdBy:      req.user._id,
+    }).catch(() => {});
   }
 
   const populated = await SupportTicket.findById(ticket._id)
@@ -258,7 +262,7 @@ exports.getMyShipmentsForSupport = asyncHandler(async (req, res) => {
   } else if (req.user.role === 'driver') {
     query.assignedDriver = req.user._id;
   }
-  // admin sees all
+  // admin sees all (but they shouldn't reach this ideally)
 
   const shipments = await Shipment.find(query)
     .select('trackingNumber from to status createdAt')

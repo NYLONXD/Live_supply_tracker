@@ -1,12 +1,13 @@
 // server/controllers/invite.Controller.js
-const crypto   = require('crypto');
-const bcrypt   = require('bcryptjs');
-const Invite   = require('../models/Invite.models');
-const User     = require('../models/user.models');
+const crypto        = require('crypto');
+const bcrypt        = require('bcryptjs');
+const Invite        = require('../models/Invite.models');
+const User          = require('../models/user.models');
+const Organization  = require('../models/Organization.models');
 const asyncHandler  = require('../utils/asyncHandle.utils');
 const { generateToken } = require('../middleware/auth.middleware');
-const { sendInviteEmail } = require('../utils/email.utils'); // ← changed
-const logger   = require('../utils/logger.utils');
+const { sendInviteEmail } = require('../utils/email.utils');
+const logger        = require('../utils/logger.utils');
 
 const getCookieOptions = () => ({
   httpOnly: true,
@@ -36,10 +37,16 @@ exports.createInvite = asyncHandler(async (req, res) => {
   const inviteUrl = `${process.env.CLIENT_URL}/join/${token}`;
 
   if (invite.email) {
+    // Fetch the real organization name from DB.
+    // req.user.organizationId is a raw ObjectId (protect() does not populate it),
+    // so we must do an explicit lookup here instead of using .name on the ObjectId.
+    const org = await Organization.findById(req.organizationId).select('name');
+    const orgName = org?.name || 'your organization';
+
     sendInviteEmail({
       to:          invite.email,
       inviterName: req.user.displayName,
-      orgName:     req.user.organizationId?.name || 'your organization',
+      orgName,
       role:        invite.role,
       inviteUrl,
     }).catch((err) => logger.error(`Invite email failed: ${err.message}`));
