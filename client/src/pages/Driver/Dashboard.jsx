@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, MapPin, CheckCircle, Navigation, Clock, ChevronRight, Truck, AlertCircle } from 'lucide-react';
+import { Package, MapPin, CheckCircle, Navigation, Clock, ChevronRight, Truck, AlertCircle, TrendingUp, Zap, Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
@@ -73,6 +73,12 @@ export default function DriverDashboard() {
       </DashboardLayout>
     );
   }
+
+  // ── Derived performance data ──
+  const totalKm = shipments.reduce((sum, s) => sum + (s.distance || 0), 0);
+  const avgDeliveryTime = delivered.length > 0
+    ? delivered.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0) / delivered.length
+    : 0;
 
   return (
     <DashboardLayout title="Dashboard">
@@ -190,7 +196,7 @@ export default function DriverDashboard() {
       )}
 
       {/* Link to all deliveries */}
-      <Link to="/driver/deliveries" className="block">
+      <Link to="/driver/deliveries" className="block mb-8">
         <div className="flex items-center justify-between p-5 glass-dark border border-white/10 rounded-xl hover:border-neon-blue transition-all duration-300 group">
           <div className="flex items-center gap-4">
             <div className="p-2 bg-white/5 rounded-lg group-hover:bg-neon-blue/10 group-hover:text-neon-blue transition-colors">
@@ -205,9 +211,108 @@ export default function DriverDashboard() {
         </div>
       </Link>
 
+      {/* ── Bottom Section: Performance Stats + Recent Deliveries ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Performance Stats */}
+        <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-modern-fade" style={{ animationDelay: '0.2s' }}>
+          <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
+            <div className="w-8 h-8 bg-neon-blue/10 rounded-lg flex items-center justify-center border border-neon-blue/20">
+              <TrendingUp size={16} className="text-neon-blue" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">Performance</h3>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Lifetime stats</p>
+            </div>
+          </div>
+          <div className="p-6 space-y-5">
+            <PerfStat label="Total Distance" value={`${totalKm.toFixed(0)} km`} icon={Route} color="text-neon-green" />
+            <PerfStat label="Deliveries Done" value={delivered.length} icon={CheckCircle} color="text-neon-blue" />
+            <PerfStat label="Avg. Delivery Time" value={formatETA(avgDeliveryTime)} icon={Clock} color="text-amber-400" />
+            <PerfStat label="Active Jobs" value={active.length} icon={Zap} color="text-neon-pink" />
+            {/* Completion rate */}
+            <div className="pt-4 border-t border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Completion Rate</span>
+                <span className="text-xs font-black text-neon-green">
+                  {shipments.length > 0 ? Math.round((delivered.length / shipments.length) * 100) : 0}%
+                </span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                <div
+                  className="h-full bg-neon-green rounded-full transition-all duration-700 opacity-80"
+                  style={{ width: `${shipments.length > 0 ? (delivered.length / shipments.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Delivery Timeline */}
+        <div className="lg:col-span-2 glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-modern-fade" style={{ animationDelay: '0.3s' }}>
+          <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
+            <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
+              <Clock size={16} className="text-neon-green" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">Recent Deliveries</h3>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Completed missions</p>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {delivered.length === 0 ? (
+              <div className="text-center py-10">
+                <Package size={32} className="text-muted-foreground mx-auto mb-3 opacity-40" />
+                <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">No deliveries yet</p>
+                <p className="text-xs text-muted-foreground">Completed missions will appear here.</p>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-neon-green/40 via-white/10 to-transparent" />
+                <div className="space-y-5">
+                  {delivered.slice(0, 6).map((s, i) => {
+                    const timeAgo = (() => {
+                      const diff = Math.max(0, Date.now() - new Date(s.updatedAt || s.createdAt).getTime());
+                      const mins = Math.floor(diff / 60000);
+                      if (mins < 1) return 'Just now';
+                      if (mins < 60) return `${mins}m ago`;
+                      const hrs = Math.floor(mins / 60);
+                      if (hrs < 24) return `${hrs}h ago`;
+                      return `${Math.floor(hrs / 24)}d ago`;
+                    })();
+                    return (
+                      <div key={s._id} className="flex gap-4 group">
+                        <div className="relative z-10 w-[23px] h-[23px] rounded-full bg-neon-green shadow-[0_0_10px_rgba(0,255,102,0.6)] flex items-center justify-center shrink-0 mt-0.5 border-2 border-[#121212]">
+                          <CheckCircle size={10} className="text-black" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-white font-medium leading-snug">
+                            <span className="font-mono text-neon-blue">{s.trackingNumber.slice(-6).toUpperCase()}</span>
+                            <span className="text-muted-foreground"> delivered</span>
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            {s.from?.split(',')[0]} → {s.to?.split(',')[0]}
+                          </p>
+                          {s.distance && (
+                            <p className="text-[9px] font-bold text-neon-green/70 mt-0.5 uppercase tracking-widest">{s.distance.toFixed(1)} km</p>
+                          )}
+                        </div>
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest shrink-0 mt-1">{timeAgo}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
     </DashboardLayout>
   );
 }
+
+/* ── Sub-components ──────────────────────────────────────────── */
 
 function StatCard({ icon: Icon, label, value, active }) {
   return (
@@ -244,5 +349,19 @@ function QueueCard({ shipment }) {
         <ChevronRight size={16} className="text-muted-foreground group-hover:text-white transition-colors shrink-0 group-hover:translate-x-1" />
       </div>
     </Link>
+  );
+}
+
+function PerfStat({ label, value, icon: Icon, color }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center border border-white/5">
+          <Icon size={14} className={color} />
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-sm font-black text-white">{value}</span>
+    </div>
   );
 }

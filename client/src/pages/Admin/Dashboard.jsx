@@ -1,13 +1,15 @@
 // client/src/pages/Admin/Dashboard.jsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Users, Truck, ArrowUpRight, ShieldCheck, Zap, Activity } from 'lucide-react';
+import { Package, Users, Truck, ArrowUpRight, ShieldCheck, Zap, Activity, Clock, MapPin, TrendingUp } from 'lucide-react';
+import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import { analyticsAPI, shipmentAPI, adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalShipments: 0, averageETA: 0 });
+  const [allShipments, setAllShipments] = useState([]);
   const [recentShipments, setRecentShipments] = useState([]);
   const [userStats, setUserStats] = useState({ total: 0, drivers: 0 });
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,7 @@ export default function AdminDashboard() {
         adminAPI.getAllDrivers(),
       ]);
       setStats(analyticsRes.data);
+      setAllShipments(shipmentsRes.data);
       setRecentShipments(shipmentsRes.data.slice(0, 8));
       setUserStats({ total: usersRes.data.length, drivers: driversRes.data.length });
     } catch (error) {
@@ -47,7 +50,7 @@ export default function AdminDashboard() {
         <MetricCard label="Global Shipments" value={stats.totalShipments} icon={Package} trend="+12.4%" />
         <MetricCard label="Active Personnel" value={userStats.total} icon={Users} />
         <MetricCard label="Verified Fleet" value={userStats.drivers} icon={Truck} active />
-        <MetricCard label="Precision ETA" value={`${stats.averageETA.toFixed(0)}m`} icon={Zap} />
+        <MetricCard label="Precision ETA" value={formatETA(stats.averageETA)} icon={Zap} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -129,9 +132,173 @@ export default function AdminDashboard() {
            </div>
         </div>
       </div>
+
+      {/* ── Bottom Section: Activity Timeline + Status Distribution ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+        <div className="lg:col-span-2">
+          <ActivityTimeline shipments={allShipments} />
+        </div>
+        <div>
+          <StatusDistribution shipments={allShipments} />
+        </div>
+      </div>
+
     </DashboardLayout>
   );
 }
+
+/* ── Activity Timeline ──────────────────────────────────────── */
+function ActivityTimeline({ shipments }) {
+  const events = shipments
+    .slice(0, 12)
+    .map((s) => {
+      const evtMap = {
+        delivered:  { verb: 'was delivered',     icon: Package, color: 'bg-neon-green', glow: 'shadow-[0_0_10px_rgba(0,255,102,0.6)]' },
+        in_transit: { verb: 'is now in transit', icon: Truck,   color: 'bg-neon-blue',  glow: 'shadow-[0_0_10px_rgba(0,240,255,0.6)]' },
+        assigned:   { verb: 'was assigned',      icon: Users,   color: 'bg-neon-purple', glow: 'shadow-[0_0_10px_rgba(180,0,255,0.6)]' },
+        picked_up:  { verb: 'was picked up',     icon: MapPin,  color: 'bg-amber-400',   glow: 'shadow-[0_0_10px_rgba(251,191,36,0.6)]' },
+        pending:    { verb: 'is awaiting assignment', icon: Clock, color: 'bg-zinc-500', glow: '' },
+      };
+      const evt = evtMap[s.status] || evtMap.pending;
+      return { ...evt, shipment: s, time: s.updatedAt || s.createdAt };
+    })
+    .sort((a, b) => new Date(b.time) - new Date(a.time))
+    .slice(0, 8);
+
+  const timeAgo = (dateStr) => {
+    const diff = Math.max(0, Date.now() - new Date(dateStr).getTime());
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1)  return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-modern-fade" style={{ animationDelay: '0.2s' }}>
+      <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
+        <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
+          <Activity size={16} className="text-neon-blue" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white">Activity Stream</h3>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Recent network events</p>
+        </div>
+      </div>
+
+      <div className="p-6">
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-neon-blue/40 via-white/10 to-transparent" />
+
+          <div className="space-y-6">
+            {events.map((evt, i) => {
+              const Icon = evt.icon;
+              return (
+                <div key={i} className="flex gap-4 group">
+                  <div className={`relative z-10 w-[23px] h-[23px] rounded-full ${evt.color} ${evt.glow} flex items-center justify-center shrink-0 mt-0.5 border-2 border-[#121212]`}>
+                    <Icon size={10} className="text-black" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-medium leading-snug">
+                      <span className="font-mono text-neon-blue">{evt.shipment.trackingNumber.slice(-6).toUpperCase()}</span>
+                      <span className="text-muted-foreground"> {evt.verb}</span>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                      {evt.shipment.from?.split(',')[0]} → {evt.shipment.to?.split(',')[0]}
+                    </p>
+                  </div>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest shrink-0 mt-1">{timeAgo(evt.time)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {events.length === 0 && (
+          <div className="text-center py-8">
+            <Activity size={28} className="text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="text-xs text-muted-foreground">No recent activity to display.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Status Distribution (visual bar chart) ─────────────────── */
+function StatusDistribution({ shipments }) {
+  const STATUS_CONFIG = {
+    pending:    { label: 'Pending',    color: 'bg-amber-400',   textColor: 'text-amber-400' },
+    assigned:   { label: 'Assigned',   color: 'bg-neon-purple', textColor: 'text-neon-purple' },
+    picked_up:  { label: 'Picked Up',  color: 'bg-neon-pink',   textColor: 'text-neon-pink' },
+    in_transit: { label: 'In Transit', color: 'bg-neon-blue',   textColor: 'text-neon-blue' },
+    delivered:  { label: 'Delivered',  color: 'bg-neon-green',  textColor: 'text-neon-green' },
+    cancelled:  { label: 'Cancelled',  color: 'bg-destructive', textColor: 'text-destructive' },
+  };
+
+  const counts = {};
+  shipments.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1; });
+  const total = shipments.length || 1;
+  const maxCount = Math.max(...Object.values(counts), 1);
+
+  const entries = Object.entries(STATUS_CONFIG).filter(([key]) => counts[key] > 0);
+
+  return (
+    <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl h-full animate-modern-fade" style={{ animationDelay: '0.3s' }}>
+      <div className="px-6 py-5 border-b border-white/5 flex items-center gap-3">
+        <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center border border-white/10">
+          <TrendingUp size={16} className="text-neon-green" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white">Status Matrix</h3>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Shipment distribution</p>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-5">
+        {entries.map(([key, cfg]) => {
+          const count = counts[key];
+          const pct = Math.round((count / total) * 100);
+          const barWidth = Math.max(8, (count / maxCount) * 100);
+          return (
+            <div key={key} className="group">
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${cfg.textColor}`}>{cfg.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-white">{count}</span>
+                  <span className="text-[9px] text-muted-foreground font-bold">({pct}%)</span>
+                </div>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                <div
+                  className={`h-full ${cfg.color} rounded-full transition-all duration-700 ease-out group-hover:opacity-100 opacity-80`}
+                  style={{ width: `${barWidth}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+
+        {entries.length === 0 && (
+          <div className="text-center py-8">
+            <TrendingUp size={28} className="text-muted-foreground mx-auto mb-3 opacity-40" />
+            <p className="text-xs text-muted-foreground">No shipment data yet.</p>
+          </div>
+        )}
+
+        {/* Total */}
+        <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Processed</span>
+          <span className="text-lg font-black text-white tracking-tighter">{shipments.length}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sub-components ──────────────────────────────────────────── */
 
 function MetricCard({ label, value, icon: Icon, trend, active }) {
   return (
