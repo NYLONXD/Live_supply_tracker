@@ -1,10 +1,11 @@
 // client/src/pages/Admin/Dashboard.jsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Users, Truck, ArrowUpRight, ShieldCheck, Zap, Activity, Clock, MapPin, TrendingUp } from 'lucide-react';
+import { Package, Users, Truck, ArrowUpRight, ShieldCheck, Zap, Activity, Clock, MapPin, TrendingUp, UserPlus } from 'lucide-react';
 import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
 import { analyticsAPI, shipmentAPI, adminAPI } from '../../services/api';
 
 export default function AdminDashboard() {
@@ -105,6 +106,9 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* ── Quick Invite Cards ── */}
+          <QuickInviteSection />
         </div>
 
         {/* Intelligence Panel */}
@@ -133,6 +137,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+
       {/* ── Bottom Section: Activity Timeline + Status Distribution ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
         <div className="lg:col-span-2">
@@ -144,6 +149,65 @@ export default function AdminDashboard() {
       </div>
 
     </DashboardLayout>
+  );
+}
+/* ── Quick Invite Section ───────────────────────────────────── */
+function QuickInviteSection() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 animate-modern-fade" style={{ animationDelay: '0.15s' }}>
+      <InviteCard
+        title="Fleet Operators"
+        description="Invite drivers to manage and deliver your shipments."
+        buttonText="Invite Driver"
+        to="/admin/users"
+        avatars={[
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix&backgroundColor=b6e3f4",
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka&backgroundColor=c0aede",
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=John&backgroundColor=ffdfbf"
+        ]}
+      />
+      <InviteCard
+        title="Client Network"
+        description="Invite clients to track their shipments in real-time."
+        buttonText="Invite Client"
+        to="/admin/users"
+        avatars={[
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=Sophie&backgroundColor=ffdfbf",
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=Alex&backgroundColor=b6e3f4",
+          "https://api.dicebear.com/9.x/avataaars/svg?seed=Zoe&backgroundColor=c0aede"
+        ]}
+      />
+    </div>
+  );
+}
+
+function InviteCard({ title, description, buttonText, to, avatars }) {
+  return (
+    <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-8 flex flex-col items-center text-center relative overflow-hidden group hover:border-white/10 transition-all duration-300">
+      {/* Avatars */}
+      <div className="flex -space-x-3 mb-6">
+        {avatars.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt="avatar"
+            className="w-12 h-12 rounded-full border-2 border-[#0a0a0a] grayscale group-hover:grayscale-0 transition-all duration-500 object-cover bg-white"
+          />
+        ))}
+      </div>
+
+      <h3 className="text-lg font-semibold text-white mb-2 tracking-tight">{title}</h3>
+      <p className="text-[#a1a1aa] text-sm mb-8 leading-relaxed max-w-[220px]">
+        {description}
+      </p>
+
+      <Link
+        to={to}
+        className="flex items-center justify-center gap-2 w-full py-2.5 bg-[#e4e4e7] hover:bg-white text-black rounded-xl font-medium text-sm transition-colors"
+      >
+        <span className="text-lg leading-none mb-0.5">+</span> {buttonText}
+      </Link>
+    </div>
   );
 }
 
