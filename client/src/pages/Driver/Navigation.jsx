@@ -1,6 +1,8 @@
+// client/src/pages/Driver/Navigation.jsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, MapPin, Navigation as NavigationIcon, Radio } from 'lucide-react';
+import { AlertCircle, MapPin, Navigation as NavigationIcon, Radio, Zap } from 'lucide-react';
+import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -117,7 +119,7 @@ export default function Navigation() {
     return (
       <DashboardLayout title="Navigation">
         <div className="flex h-64 items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-black border-t-transparent" />
+          <div className="w-12 h-12 border-4 border-white/20 border-t-neon-blue rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
         </div>
       </DashboardLayout>
     );
@@ -126,84 +128,99 @@ export default function Navigation() {
   if (!shipment) {
     return (
       <DashboardLayout title="Navigation">
-        <div className="flex h-64 items-center justify-center gap-2 text-red-500">
-          <AlertCircle size={18} />
-          <span>Shipment not found</span>
+        <div className="flex h-64 items-center justify-center gap-2 text-destructive">
+          <AlertCircle size={24} className="shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+          <span className="text-sm font-bold uppercase tracking-widest text-white">Mission not found</span>
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout title="Driver Navigation">
-      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <Card>
-            <h2 className="text-lg font-semibold text-black">Delivery details</h2>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <MapPin size={16} className="mt-1 text-black" />
+    <DashboardLayout title="Route Guidance">
+      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-6 animate-modern-fade">
+          
+          <div className="glass-dark border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-blue/10 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white mb-6 flex items-center gap-2">
+              <Zap size={14} className="text-neon-blue" /> Mission Details
+            </h2>
+            
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <MapPin size={14} className="text-neon-green shadow-[0_0_8px_rgba(0,255,102,0.5)]" />
+                </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Pickup</p>
-                  <p className="mt-1 text-black">{shipment.from}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Extraction Point</p>
+                  <p className="text-sm font-bold text-white tracking-wide">{shipment.from}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <MapPin size={16} className="mt-1 text-black" />
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <MapPin size={14} className="text-neon-pink shadow-[0_0_8px_rgba(255,0,102,0.5)]" />
+                </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Delivery</p>
-                  <p className="mt-1 text-black">{shipment.to}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1">Drop Zone</p>
+                  <p className="text-sm font-bold text-white tracking-wide">{shipment.to}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 border-t border-brand-zinc-200 pt-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Distance</p>
-                  <p className="mt-1 text-lg font-bold text-black">{shipment.distance ? `${shipment.distance.toFixed(1)} km` : '—'}</p>
+              <div className="grid grid-cols-2 gap-4 border-t border-white/10 pt-6">
+                <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1.5">Distance</p>
+                  <p className="text-xl font-black tracking-tighter text-white">{shipment.distance ? `${shipment.distance.toFixed(1)} km` : '—'}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">ETA</p>
-                  <p className="mt-1 text-lg font-bold text-black">{currentETA ? `${Math.round(currentETA)} min` : '—'}</p>
+                <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-1.5">Time to Target</p>
+                  <p className="text-xl font-black tracking-tighter text-white">{formatETA(currentETA)}</p>
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card>
-            <h2 className="text-lg font-semibold text-black">Live location sharing</h2>
-            <div className="mt-4 space-y-3">
+          <div className="glass-dark border border-white/10 p-6 rounded-2xl shadow-2xl">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white mb-6 flex items-center gap-2">
+              <Radio size={14} className={isSharing ? 'text-neon-green animate-pulse' : 'text-muted-foreground'} /> 
+              Telemetry Link
+            </h2>
+            
+            <div className="space-y-4">
               <Button
                 onClick={isSharing ? stopSharing : startSharing}
-                variant={isSharing ? 'danger' : 'primary'}
-                className="w-full"
+                variant={isSharing ? 'neon' : 'primary'}
+                className={`w-full h-12 text-xs font-bold uppercase tracking-widest ${isSharing ? 'bg-destructive/10 text-destructive border-destructive/50 hover:bg-destructive/20 hover:text-white hover:border-destructive shadow-[0_0_15px_rgba(220,38,38,0.2)]' : 'bg-white text-black hover:bg-zinc-200'}`}
                 icon={Radio}
               >
-                {isSharing ? 'Stop live sharing' : 'Start live sharing'}
+                {isSharing ? 'Sever Telemetry Link' : 'Establish Telemetry'}
               </Button>
 
               <Button
                 onClick={openGoogleMaps}
                 variant="outline"
-                className="w-full"
+                className="w-full h-12 text-xs font-bold uppercase tracking-widest border-white/20 text-white hover:border-neon-blue hover:text-neon-blue"
                 disabled={!currentLocation}
                 icon={NavigationIcon}
               >
-                Open in Google Maps
+                Engage External Nav
               </Button>
 
               {isSharing && (
-                <div className="rounded-sm border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                  Live location is being sent through WebSocket updates.
+                <div className="rounded-xl border border-neon-green/20 bg-neon-green/5 px-4 py-3 mt-4 text-xs font-bold text-neon-green flex items-center gap-2 animate-pulse shadow-[0_0_10px_rgba(0,255,102,0.1)]">
+                  <span className="w-2 h-2 rounded-full bg-neon-green" />
+                  Live coordinates transmitting to command center.
                 </div>
               )}
             </div>
-          </Card>
+          </div>
         </div>
 
-        <Card noPadding className="overflow-hidden">
+        <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-modern-fade" style={{ animationDelay: '0.1s' }}>
           <GoogleShipmentMap shipment={shipment} currentLocation={currentLocation} />
-        </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, Package, Truck, UserCheck, UserX, MessageSquare,
-  CheckCircle2, AlertCircle, Check, Trash2, Loader2, Filter
+  CheckCircle2, AlertCircle, Check, Trash2, Loader2, Filter, Zap
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
@@ -13,34 +13,34 @@ import toast from 'react-hot-toast';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
-  shipment_created:        { Icon: Package,       color: 'text-blue-600',   bg: 'bg-blue-50',   label: 'Shipment'   },
-  shipment_assigned:       { Icon: Truck,         color: 'text-purple-600', bg: 'bg-purple-50', label: 'Assignment' },
-  shipment_status_updated: { Icon: Package,       color: 'text-emerald-600',bg: 'bg-emerald-50',label: 'Status'     },
-  driver_promoted:         { Icon: UserCheck,     color: 'text-green-600',  bg: 'bg-green-50',  label: 'Role'       },
-  driver_demoted:          { Icon: UserX,         color: 'text-red-600',    bg: 'bg-red-50',    label: 'Role'       },
-  support_ticket_created:  { Icon: MessageSquare, color: 'text-amber-600',  bg: 'bg-amber-50',  label: 'Support'    },
-  support_ticket_replied:  { Icon: MessageSquare, color: 'text-blue-600',   bg: 'bg-blue-50',   label: 'Support'    },
-  support_ticket_resolved: { Icon: CheckCircle2,  color: 'text-green-600',  bg: 'bg-green-50',  label: 'Support'    },
-  support_ticket_closed:   { Icon: CheckCircle2,  color: 'text-zinc-600',   bg: 'bg-zinc-50',   label: 'Support'    },
-  system:                  { Icon: AlertCircle,   color: 'text-zinc-600',   bg: 'bg-zinc-50',   label: 'System'     },
+  shipment_created:        { Icon: Package,       color: 'text-neon-blue',   bg: 'bg-neon-blue/10 border border-neon-blue/20',   label: 'Shipment', glow: 'shadow-[0_0_10px_rgba(0,240,255,0.2)]' },
+  shipment_assigned:       { Icon: Truck,         color: 'text-neon-purple', bg: 'bg-neon-purple/10 border border-neon-purple/20', label: 'Assignment', glow: 'shadow-[0_0_10px_rgba(180,0,255,0.2)]' },
+  shipment_status_updated: { Icon: Package,       color: 'text-neon-green',  bg: 'bg-neon-green/10 border border-neon-green/20', label: 'Status', glow: 'shadow-[0_0_10px_rgba(0,255,102,0.2)]'     },
+  driver_promoted:         { Icon: UserCheck,     color: 'text-neon-green',  bg: 'bg-neon-green/10 border border-neon-green/20', label: 'Role', glow: 'shadow-[0_0_10px_rgba(0,255,102,0.2)]'       },
+  driver_demoted:          { Icon: UserX,         color: 'text-destructive', bg: 'bg-destructive/10 border border-destructive/20',label: 'Role', glow: 'shadow-[0_0_10px_rgba(220,38,38,0.2)]'       },
+  support_ticket_created:  { Icon: MessageSquare, color: 'text-amber-400',   bg: 'bg-amber-400/10 border border-amber-400/20',   label: 'Support', glow: 'shadow-[0_0_10px_rgba(251,191,36,0.2)]'    },
+  support_ticket_replied:  { Icon: MessageSquare, color: 'text-neon-blue',   bg: 'bg-neon-blue/10 border border-neon-blue/20',   label: 'Support', glow: 'shadow-[0_0_10px_rgba(0,240,255,0.2)]'    },
+  support_ticket_resolved: { Icon: CheckCircle2,  color: 'text-neon-green',  bg: 'bg-neon-green/10 border border-neon-green/20', label: 'Support', glow: 'shadow-[0_0_10px_rgba(0,255,102,0.2)]'    },
+  support_ticket_closed:   { Icon: CheckCircle2,  color: 'text-muted-foreground',bg: 'bg-white/5 border border-white/10',          label: 'Support', glow: ''    },
+  system:                  { Icon: AlertCircle,   color: 'text-neon-pink',   bg: 'bg-neon-pink/10 border border-neon-pink/20',   label: 'System', glow: 'shadow-[0_0_10px_rgba(255,0,102,0.2)]'     },
 };
 
 function formatDate(date) {
   const d = new Date(date);
   const now = new Date();
   const diff = now - d;
-  if (diff < 60_000)    return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000)return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 60_000)    return 'Just Now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m Ago`;
+  if (diff < 86_400_000)return `${Math.floor(diff / 3_600_000)}h Ago`;
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 const FILTERS = [
-  { label: 'All',     value: '' },
-  { label: 'Unread',  value: 'unread' },
-  { label: 'Shipments', value: 'shipment' },
-  { label: 'Support', value: 'support' },
-  { label: 'Role',    value: 'role' },
+  { label: 'All Signals',     value: '' },
+  { label: 'Unread',          value: 'unread' },
+  { label: 'Logistics',       value: 'shipment' },
+  { label: 'Comms',           value: 'support' },
+  { label: 'Clearance',       value: 'role' },
 ];
 
 export default function Notifications() {
@@ -94,7 +94,7 @@ export default function Notifications() {
       await notificationAPI.markAllRead();
       setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      toast.success('All marked as read');
+      toast.success('All signals marked read');
     } catch { toast.error('Failed'); }
   };
 
@@ -103,7 +103,7 @@ export default function Notifications() {
     try {
       await notificationAPI.clearRead();
       fetchNotifs(1);
-      toast.success('Read notifications cleared');
+      toast.success('Read signals cleared');
     } catch { toast.error('Failed'); }
     finally { setClearing(false); }
   };
@@ -119,56 +119,65 @@ export default function Notifications() {
     const d = new Date(n.createdAt);
     const today    = new Date(); today.setHours(0,0,0,0);
     const yesterday= new Date(today); yesterday.setDate(today.getDate()-1);
-    let key = d >= today ? 'Today' : d >= yesterday ? 'Yesterday' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' });
+    let key = d >= today ? 'Today' : d >= yesterday ? 'Yesterday' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
     if (!acc[key]) acc[key] = [];
     acc[key].push(n);
     return acc;
   }, {});
 
   return (
-    <DashboardLayout title="Notifications">
-      {/* Header actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-black rounded-sm flex items-center justify-center">
-            <Bell size={18} className="text-white" />
+    <DashboardLayout title="System Alerts">
+      
+      {/* Header Info Box */}
+      <div className="glass-dark border border-white/10 rounded-2xl p-6 mb-6 shadow-2xl relative overflow-hidden animate-modern-fade">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-neon-blue/10 rounded-full blur-[50px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)] relative">
+              <Zap size={24} className="text-white" />
+              {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-neon-pink rounded-full border-2 border-black shadow-[0_0_8px_rgba(255,0,102,0.8)] animate-pulse" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-white">Incoming Signals</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {unreadCount > 0 ? `${unreadCount} unread signals detected` : "All channels clear"}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-bold text-black tracking-tight">All Notifications</h2>
-            <p className="text-xs text-zinc-500">
-              {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <Button variant="outline" size="sm" icon={Check} onClick={handleMarkAllRead}>
-              Mark all read
+          <div className="flex flex-wrap items-center gap-3">
+            {unreadCount > 0 && (
+              <Button variant="neon" size="sm" icon={Check} onClick={handleMarkAllRead} className="h-9 px-4 text-xs font-bold uppercase tracking-widest">
+                Acknowledge All
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Trash2}
+              onClick={handleClearRead}
+              loading={clearing}
+              className="h-9 px-4 text-xs font-bold uppercase tracking-widest border-white/20 text-white hover:bg-white/10"
+            >
+              Purge Read
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Trash2}
-            onClick={handleClearRead}
-            loading={clearing}
-          >
-            Clear read
-          </Button>
+          </div>
         </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1 mb-6 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2 custom-scrollbar animate-modern-fade" style={{ animationDelay: '0.1s' }}>
         {FILTERS.map(f => (
           <button
             key={f.value}
             onClick={() => setFilter(f.value)}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-sm whitespace-nowrap transition-colors ${
+            className={`px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-lg whitespace-nowrap transition-all duration-300 ${
               filter === f.value
-                ? 'bg-black text-white'
-                : 'bg-white border border-zinc-200 text-zinc-500 hover:text-black hover:border-zinc-400'
+                ? 'bg-neon-blue/20 text-neon-blue border border-neon-blue/50 shadow-[0_0_15px_rgba(0,240,255,0.2)]'
+                : 'bg-black/50 border border-white/10 text-muted-foreground hover:text-white hover:border-white/30'
             }`}
           >
             {f.label}
@@ -177,123 +186,131 @@ export default function Notifications() {
       </div>
 
       {/* Content */}
-      {loading ? (
-        <Card>
-          <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-zinc-400" />
+      <div className="animate-modern-fade" style={{ animationDelay: '0.2s' }}>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 glass-dark border border-white/10 rounded-2xl">
+            <Loader2 size={32} className="animate-spin text-neon-blue shadow-[0_0_15px_rgba(0,240,255,0.5)] rounded-full" />
           </div>
-        </Card>
-      ) : notifs.length === 0 ? (
-        <Card>
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-zinc-100 rounded-sm flex items-center justify-center mx-auto mb-4">
-              <Bell size={28} className="text-zinc-400" />
+        ) : notifs.length === 0 ? (
+          <div className="glass-dark border border-white/10 rounded-2xl p-12 text-center">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
+              <Bell size={32} className="text-muted-foreground opacity-50" />
             </div>
-            <h3 className="text-lg font-bold text-black mb-2">Nothing here</h3>
-            <p className="text-zinc-500 text-sm">
-              {filter ? 'No notifications match this filter.' : 'You have no notifications yet.'}
+            <h3 className="text-sm font-bold uppercase tracking-widest text-white mb-2">No Active Signals</h3>
+            <p className="text-xs text-muted-foreground">
+              {filter ? 'No signals match current spectrum filter.' : 'The communications channel is completely empty.'}
             </p>
             {filter && (
               <button
                 onClick={() => setFilter('')}
-                className="mt-4 text-sm font-semibold text-black underline underline-offset-2"
+                className="mt-6 text-[10px] font-bold uppercase tracking-widest text-neon-blue hover:text-white transition-colors"
               >
-                Clear filter
+                Reset Spectrum Filter
               </button>
             )}
           </div>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([dateLabel, items]) => (
-            <div key={dateLabel}>
-              {/* Date label */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                  {dateLabel}
-                </span>
-                <div className="flex-1 h-px bg-zinc-100" />
-              </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(grouped).map(([dateLabel, items]) => (
+              <div key={dateLabel}>
+                {/* Date label */}
+                <div className="flex items-center gap-4 mb-4">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neon-blue">
+                    {dateLabel}
+                  </span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                </div>
 
-              <Card noPadding>
-                <div className="divide-y divide-zinc-50">
-                  {items.map(notif => {
-                    const cfg  = TYPE_CONFIG[notif.type] || TYPE_CONFIG.system;
-                    const Icon = cfg.Icon;
-                    return (
-                      <button
-                        key={notif._id}
-                        onClick={() => handleClick(notif)}
-                        className={`w-full text-left px-5 py-4 flex items-start gap-4 transition-colors hover:bg-zinc-50/70 ${
-                          !notif.isRead ? 'bg-zinc-50/40' : ''
-                        }`}
-                      >
-                        {/* Icon */}
-                        <div className={`shrink-0 w-10 h-10 rounded-sm flex items-center justify-center ${cfg.bg}`}>
-                          <Icon size={18} className={cfg.color} />
-                        </div>
+                <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="divide-y divide-white/5 bg-black/20">
+                    {items.map(notif => {
+                      const cfg  = TYPE_CONFIG[notif.type] || TYPE_CONFIG.system;
+                      const Icon = cfg.Icon;
+                      return (
+                        <button
+                          key={notif._id}
+                          onClick={() => handleClick(notif)}
+                          className={`w-full text-left px-6 py-5 flex flex-col sm:flex-row sm:items-start gap-4 transition-all duration-300 relative group ${
+                            !notif.isRead ? 'bg-white/[0.04] hover:bg-white/[0.08]' : 'hover:bg-white/[0.02]'
+                          }`}
+                        >
+                          {!notif.isRead && (
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-neon-blue shadow-[0_0_10px_rgba(0,240,255,0.8)]" />
+                          )}
+                          
+                          {/* Icon */}
+                          <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 ${cfg.bg} ${cfg.glow}`}>
+                            <Icon size={20} className={cfg.color} />
+                          </div>
 
-                        {/* Text */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className={`text-sm leading-snug text-black ${!notif.isRead ? 'font-bold' : 'font-semibold'}`}>
-                                {notif.title}
-                              </p>
-                              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
-                                {notif.message}
-                              </p>
-                              {notif.data?.trackingNumber && (
-                                <span className="inline-block mt-1.5 px-2 py-0.5 bg-zinc-100 text-zinc-600 font-mono text-[10px] rounded-sm">
-                                  {notif.data.trackingNumber}
+                          {/* Text */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+                              <div className="min-w-0">
+                                <p className={`text-sm tracking-wide ${!notif.isRead ? 'font-bold text-white' : 'font-semibold text-zinc-300'}`}>
+                                  {notif.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-2xl">
+                                  {notif.message}
+                                </p>
+                                {notif.data?.trackingNumber && (
+                                  <div className="mt-3">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black border border-white/10 text-neon-blue font-mono text-[10px] uppercase tracking-widest rounded-md shadow-inner">
+                                      <Package size={10} /> {notif.data.trackingNumber}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-2 sm:flex-col sm:items-end sm:gap-2 mt-2 sm:mt-0">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                                  {formatDate(notif.createdAt)}
                                 </span>
-                              )}
-                            </div>
-
-                            <div className="shrink-0 flex flex-col items-end gap-1.5">
-                              <span className="text-[10px] text-zinc-400 font-medium whitespace-nowrap">
-                                {formatDate(notif.createdAt)}
-                              </span>
-                              {!notif.isRead && (
-                                <span className="w-2 h-2 rounded-full bg-black" />
-                              )}
+                                {!notif.isRead && (
+                                  <span className="text-[9px] font-bold uppercase tracking-widest text-neon-blue bg-neon-blue/10 border border-neon-blue/20 px-2 py-0.5 rounded-full">
+                                    New
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </Card>
-            </div>
-          ))}
+              </div>
+            ))}
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page <= 1}
-                onClick={() => fetchNotifs(pagination.page - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-xs text-zinc-500 font-medium">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pagination.page >= pagination.pages}
-                onClick={() => fetchNotifs(pagination.page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => fetchNotifs(pagination.page - 1)}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  Previous
+                </Button>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Page {pagination.page} / {pagination.pages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.pages}
+                  onClick={() => fetchNotifs(pagination.page + 1)}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

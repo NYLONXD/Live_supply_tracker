@@ -4,6 +4,7 @@ import {
   Clock, MapPin, Package, Search, Truck, ArrowRight,
   Shield, Zap, Globe, Radio, ChevronRight
 } from 'lucide-react';
+import { formatETA } from '../../utils/formatTime';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -252,7 +253,7 @@ export default function PublicTrack() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">ETA</p>
-                      <p className="mt-1 text-lg font-bold text-black">{shipment.currentETA ? `${Math.round(shipment.currentETA)} min` : '—'}</p>
+                      <p className="mt-1 text-lg font-bold text-black">{formatETA(shipment.currentETA)}</p>
                     </div>
                   </div>
                 </div>

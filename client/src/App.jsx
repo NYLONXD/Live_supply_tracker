@@ -23,7 +23,6 @@ import AdminDashboard      from './pages/Admin/Dashboard';
 import AllShipments        from './pages/Admin/AllShipments';
 import Users               from './pages/Admin/Users';
 import Drivers             from './pages/Admin/Drivers';
-import Analytics           from './pages/Admin/Analytics';
 import AdminCreateShipment from './pages/Admin/CreateShipment';
 
 // Driver
@@ -123,8 +122,6 @@ function App() {
           element={<ProtectedRoute allowedRoles={['admin']}><Users /></ProtectedRoute>} />
         <Route path="/admin/drivers"
           element={<ProtectedRoute allowedRoles={['admin']}><Drivers /></ProtectedRoute>} />
-        <Route path="/admin/analytics"
-          element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
 
         {/* ── Driver ──────────────────────────────────────────────────────── */}
         <Route path="/driver/dashboard"

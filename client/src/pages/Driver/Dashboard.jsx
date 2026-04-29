@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Package, MapPin, CheckCircle, Navigation, Clock, ChevronRight, Truck, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -67,7 +68,7 @@ export default function DriverDashboard() {
     return (
       <DashboardLayout title="Dashboard">
         <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-white/20 border-t-neon-blue rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
         </div>
       </DashboardLayout>
     );
@@ -78,69 +79,81 @@ export default function DriverDashboard() {
 
       {/* Greeting */}
       <div className="mb-8">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-zinc-400 mb-1">Welcome back</p>
-        <h2 className="text-2xl font-bold tracking-tight text-black">{firstName}</h2>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Welcome back</p>
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">{firstName}</h2>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-10">
         <StatCard icon={Package} label="Assigned" value={active.filter((s) => s.status === 'assigned').length} />
-        <StatCard icon={Truck} label="In Transit" value={active.filter((s) => s.status !== 'assigned').length} dark />
+        <StatCard icon={Truck} label="In Transit" value={active.filter((s) => s.status !== 'assigned').length} active />
         <StatCard icon={CheckCircle} label="Delivered" value={delivered.length} />
       </div>
 
       {/* Primary active job */}
       {primaryJob ? (
-        <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-brand-zinc-400 mb-3">Current Job</p>
-          <div className="border-2 border-black rounded-sm p-6 bg-white">
-            <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-neon-blue flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-blue opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-neon-blue"></span>
+              </span>
+              Active Mission
+            </p>
+          </div>
+
+          <div className="relative glass-dark rounded-2xl p-6 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+            {/* Background Glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-neon-blue/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/3" />
+            
+            <div className="relative z-10 flex items-start justify-between gap-4 mb-6">
               <div>
-                <p className="font-mono text-xs text-brand-zinc-500 mb-1">{primaryJob.trackingNumber}</p>
+                <p className="font-mono text-xs text-muted-foreground mb-2 opacity-80">{primaryJob.trackingNumber}</p>
                 <StatusBadge status={primaryJob.status} />
               </div>
               <div className="text-right">
                 {primaryJob.distance && (
-                  <p className="text-lg font-bold text-black">{primaryJob.distance.toFixed(1)} km</p>
+                  <p className="text-2xl font-black text-white tracking-tighter">{primaryJob.distance.toFixed(1)} km</p>
                 )}
                 {primaryJob.currentETA && (
-                  <p className="text-xs text-brand-zinc-500 flex items-center gap-1 justify-end">
-                    <Clock size={12} /> {Math.round(primaryJob.currentETA)} min ETA
+                  <p className="text-xs font-bold text-neon-green flex items-center gap-1 justify-end mt-1 uppercase tracking-widest">
+                    <Clock size={12} /> {formatETA(primaryJob.currentETA)}
                   </p>
                 )}
               </div>
             </div>
 
             {/* Route */}
-            <div className="space-y-2 mb-5">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+            <div className="space-y-4 mb-8 relative z-10 p-4 bg-black/40 rounded-xl border border-white/5">
+              <div className="flex items-start gap-4">
+                <div className="mt-1 w-3 h-3 rounded-full bg-neon-green shrink-0 shadow-[0_0_10px_rgba(0,255,102,0.5)]" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-zinc-400">Pickup</p>
-                  <p className="text-sm font-medium text-black">{primaryJob.from}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Pickup</p>
+                  <p className="text-sm font-bold text-white">{primaryJob.from}</p>
                 </div>
               </div>
-              <div className="ml-1 w-px h-4 bg-brand-zinc-200" />
-              <div className="flex items-start gap-3">
-                <div className="mt-1 w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+              <div className="ml-1.5 w-px h-6 bg-gradient-to-b from-neon-green to-neon-pink" />
+              <div className="flex items-start gap-4">
+                <div className="mt-1 w-3 h-3 rounded-full bg-neon-pink shrink-0 shadow-[0_0_10px_rgba(255,0,60,0.5)]" />
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-zinc-400">Delivery</p>
-                  <p className="text-sm font-medium text-black">{primaryJob.to}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Delivery</p>
+                  <p className="text-sm font-bold text-white">{primaryJob.to}</p>
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 relative z-10">
               <Link to={`/driver/navigate/${primaryJob._id}`} className="flex-1">
-                <Button className="w-full" icon={Navigation}>
+                <Button className="w-full h-14 text-lg font-bold bg-white text-black hover:bg-zinc-200" icon={Navigation}>
                   Navigate
                 </Button>
               </Link>
               {STATUS_FLOW[primaryJob.status] && (
                 <Button
-                  variant="outline"
-                  className="flex-1"
+                  variant="neon"
+                  className="flex-1 h-14 text-lg font-bold"
                   loading={updatingId === primaryJob._id}
                   onClick={() => handleStatusUpdate(primaryJob._id, STATUS_FLOW[primaryJob.status])}
                 >
@@ -151,24 +164,22 @@ export default function DriverDashboard() {
           </div>
         </div>
       ) : (
-        <div className="mb-8">
-          <Card>
-            <div className="text-center py-10">
-              <div className="w-12 h-12 bg-brand-zinc-100 rounded-sm flex items-center justify-center mx-auto mb-3">
-                <AlertCircle size={24} className="text-brand-zinc-400" />
-              </div>
-              <p className="font-bold text-black mb-1">No active deliveries</p>
-              <p className="text-sm text-brand-zinc-500">Your admin will assign new jobs shortly.</p>
+        <div className="mb-10">
+          <div className="glass-dark border border-white/10 rounded-2xl p-10 text-center animate-modern-fade">
+            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+              <AlertCircle size={28} className="text-muted-foreground" />
             </div>
-          </Card>
+            <p className="text-xl font-bold text-white mb-2 tracking-tight">No active missions</p>
+            <p className="text-sm text-muted-foreground">Your dispatcher will assign new routes shortly.</p>
+          </div>
         </div>
       )}
 
       {/* Queue — remaining active jobs */}
       {active.length > 1 && (
-        <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-widest text-brand-zinc-400 mb-3">
-            Up Next ({active.length - 1})
+        <div className="mb-10">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4">
+            Upcoming Route ({active.length - 1})
           </p>
           <div className="space-y-3">
             {active.slice(1).map((s) => (
@@ -180,13 +191,17 @@ export default function DriverDashboard() {
 
       {/* Link to all deliveries */}
       <Link to="/driver/deliveries" className="block">
-        <div className="flex items-center justify-between p-4 border border-brand-zinc-200 rounded-sm hover:border-black transition-colors group">
-          <div className="flex items-center gap-3">
-            <Package size={18} className="text-brand-zinc-400" />
-            <span className="text-sm font-bold text-black">View All Deliveries</span>
-            <span className="text-xs text-brand-zinc-400">({shipments.length} total)</span>
+        <div className="flex items-center justify-between p-5 glass-dark border border-white/10 rounded-xl hover:border-neon-blue transition-all duration-300 group">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-white/5 rounded-lg group-hover:bg-neon-blue/10 group-hover:text-neon-blue transition-colors">
+              <Package size={20} className="text-muted-foreground group-hover:text-neon-blue" />
+            </div>
+            <div>
+              <span className="block text-sm font-bold text-white tracking-tight">Mission History</span>
+              <span className="block text-[10px] uppercase tracking-widest text-muted-foreground">{shipments.length} total logs</span>
+            </div>
           </div>
-          <ChevronRight size={16} className="text-brand-zinc-300 group-hover:text-black transition-colors" />
+          <ChevronRight size={20} className="text-muted-foreground group-hover:text-neon-blue transition-colors group-hover:translate-x-1" />
         </div>
       </Link>
 
@@ -194,12 +209,19 @@ export default function DriverDashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, dark }) {
+function StatCard({ icon: Icon, label, value, active }) {
   return (
-    <div className={`p-4 border rounded-sm ${dark ? 'bg-black text-white border-black' : 'bg-white border-brand-zinc-200'}`}>
-      <Icon size={18} className={dark ? 'text-zinc-400 mb-3' : 'text-brand-zinc-400 mb-3'} />
-      <p className={`text-2xl font-bold tracking-tight mb-0.5 ${dark ? 'text-white' : 'text-black'}`}>{value}</p>
-      <p className={`text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-zinc-500' : 'text-brand-zinc-400'}`}>{label}</p>
+    <div className={`p-4 rounded-xl border transition-all duration-300 relative overflow-hidden group ${
+      active 
+        ? 'bg-primary border-primary shadow-[0_0_20px_rgba(255,255,255,0.1)]' 
+        : 'glass-dark border-white/10'
+    }`}>
+      {active && <div className="absolute inset-0 bg-gradient-to-tr from-neon-blue/20 to-transparent opacity-50" />}
+      <div className={`p-2.5 rounded-lg inline-block mb-3 ${active ? 'bg-background' : 'bg-white/5'}`}>
+        <Icon size={18} className={active ? 'text-foreground' : 'text-muted-foreground'} />
+      </div>
+      <p className={`text-3xl font-black tracking-tighter mb-1 relative z-10 ${active ? 'text-primary-foreground' : 'text-white'}`}>{value}</p>
+      <p className={`text-[10px] font-bold uppercase tracking-[0.2em] relative z-10 ${active ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{label}</p>
     </div>
   );
 }
@@ -207,17 +229,19 @@ function StatCard({ icon: Icon, label, value, dark }) {
 function QueueCard({ shipment }) {
   return (
     <Link to={`/driver/navigate/${shipment._id}`}>
-      <div className="flex items-center justify-between p-4 border border-brand-zinc-200 rounded-sm hover:border-black transition-colors group cursor-pointer">
-        <div className="flex items-center gap-3 min-w-0">
-          <MapPin size={16} className="text-brand-zinc-400 shrink-0" />
+      <div className="flex items-center justify-between p-4 glass-dark border border-white/5 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group cursor-pointer">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="p-2 bg-white/5 rounded-full shrink-0 group-hover:bg-white/10 transition-colors">
+            <MapPin size={16} className="text-muted-foreground group-hover:text-white" />
+          </div>
           <div className="min-w-0">
-            <p className="font-mono text-xs text-brand-zinc-500">{shipment.trackingNumber}</p>
-            <p className="text-sm font-medium text-black truncate">
-              {shipment.from?.split(',')[0]} → {shipment.to?.split(',')[0]}
+            <p className="font-mono text-[10px] tracking-widest text-muted-foreground mb-0.5">{shipment.trackingNumber}</p>
+            <p className="text-xs font-bold text-white truncate">
+              {shipment.from?.split(',')[0]} <span className="text-muted-foreground mx-1">→</span> {shipment.to?.split(',')[0]}
             </p>
           </div>
         </div>
-        <ChevronRight size={14} className="text-brand-zinc-300 group-hover:text-black transition-colors shrink-0" />
+        <ChevronRight size={16} className="text-muted-foreground group-hover:text-white transition-colors shrink-0 group-hover:translate-x-1" />
       </div>
     </Link>
   );

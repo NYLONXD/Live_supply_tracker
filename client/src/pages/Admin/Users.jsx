@@ -1,6 +1,6 @@
 // client/src/pages/Admin/Users.jsx
 import { useEffect, useState } from 'react';
-import { Search, Ban, Check, Link2, Copy, Trash2, RefreshCw } from 'lucide-react';
+import { Search, Ban, Check, Link2, Copy, Trash2, RefreshCw, Users as UsersIcon, ShieldAlert, Zap } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
@@ -107,9 +107,9 @@ export default function Users() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Users">
+      <DashboardLayout title="Access Control">
         <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-white/20 border-t-neon-blue rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
         </div>
       </DashboardLayout>
     );
@@ -121,198 +121,235 @@ export default function Users() {
   );
 
   return (
-    <DashboardLayout title="Users & Invites">
-
-      {/* ── Invite Section ──────────────────────────────────────────────────── */}
-      <Card className="mb-6">
-        <h2 className="text-lg font-bold tracking-tight mb-1">Invite someone to your team</h2>
-        <p className="text-sm text-brand-zinc-500 mb-4">
-          Send them the link — they'll register and be locked to your org automatically.
-        </p>
-
-        <form onSubmit={handleCreateInvite} className="flex flex-col md:flex-row gap-3 items-end">
-          <div className="flex-1">
-            <Input
-              label="Email (optional — pre-fills the form)"
-              type="email"
-              placeholder="driver@example.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-            />
-          </div>
-          <div className="w-full md:w-40">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-brand-zinc-500 mb-1.5">
-              Role
-            </label>
-            <select
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white border border-brand-zinc-200 text-black rounded-sm focus:outline-none focus:ring-1 focus:ring-black"
-            >
-              <option value="driver">Driver</option>
-              <option value="user">User</option>
-            </select>
-          </div>
-          <Button type="submit" loading={creating} icon={Link2} className="whitespace-nowrap">
-            Generate Link
-          </Button>
-        </form>
-
-        {/* Newly created link */}
-        {newInviteUrl && (
-          <div className="mt-4 p-4 bg-brand-zinc-50 border border-brand-zinc-200 rounded-sm flex items-center justify-between gap-4">
-            <p className="text-xs font-mono text-brand-zinc-600 truncate flex-1">
-              {newInviteUrl}
+    <DashboardLayout title="Access Control">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-modern-fade">
+        
+        {/* Left Column: Invites */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Invite Generator */}
+          <div className="glass-dark border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-neon-blue/10 rounded-full blur-[40px] pointer-events-none" />
+            
+            <h2 className="text-sm font-bold uppercase tracking-widest text-white mb-2 flex items-center gap-2">
+              <Zap size={16} className="text-neon-blue" /> Issue Credentials
+            </h2>
+            <p className="text-xs text-muted-foreground mb-6">
+              Generate encrypted access tokens for new operators or clients.
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              icon={Copy}
-              onClick={() => copyLink(newInviteUrl)}
-            >
-              Copy
-            </Button>
-          </div>
-        )}
-      </Card>
 
-      {/* ── Pending Invites ─────────────────────────────────────────────────── */}
-      {pendingInvites.length > 0 && (
-        <Card className="mb-6">
-          <h2 className="text-base font-bold tracking-tight mb-4">
-            Pending Invites ({pendingInvites.length})
-          </h2>
-          <div className="space-y-2">
-            {pendingInvites.map((invite) => (
-              <div
-                key={invite.token}
-                className="flex items-center justify-between gap-4 p-3 border border-brand-zinc-100 rounded-sm bg-brand-zinc-50"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-black capitalize">
-                    {invite.role}
-                    {invite.email && (
-                      <span className="text-brand-zinc-400 font-normal ml-2">
-                        → {invite.email}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[10px] text-brand-zinc-400 mt-0.5">
-                    Expires {new Date(invite.expiresAt).toLocaleDateString()}
-                    {' · '}Created by {invite.invitedBy?.displayName}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    icon={Copy}
-                    onClick={() =>
-                      copyLink(`${window.location.origin}/join/${invite.token}`)
-                    }
+            <form onSubmit={handleCreateInvite} className="flex flex-col gap-4 relative z-10">
+              <Input
+                label="Target Email (Optional)"
+                type="email"
+                placeholder="operative@domain.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white"
+              />
+              
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                  Clearance Level
+                </label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/50 border border-white/10 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-neon-blue appearance-none transition-colors"
+                >
+                  <option value="driver">Operator (Driver)</option>
+                  <option value="user">Client (User)</option>
+                </select>
+              </div>
+              
+              <Button type="submit" loading={creating} variant="neon" icon={Link2} className="w-full mt-2">
+                Generate Access Link
+              </Button>
+            </form>
+
+            {/* Newly created link */}
+            {newInviteUrl && (
+              <div className="mt-6 p-4 bg-neon-green/5 border border-neon-green/20 rounded-lg flex flex-col gap-3 relative z-10 shadow-[0_0_15px_rgba(0,255,102,0.1)]">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neon-green">Token Generated</p>
+                <p className="text-xs font-mono text-white truncate break-all">
+                  {newInviteUrl}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={Copy}
+                  onClick={() => copyLink(newInviteUrl)}
+                  className="w-full border-neon-green/30 hover:bg-neon-green/10 text-neon-green"
+                >
+                  Copy to Clipboard
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Pending Invites */}
+          {pendingInvites.length > 0 && (
+            <div className="glass-dark border border-white/10 rounded-2xl p-6 shadow-2xl">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-white mb-4 flex items-center justify-between">
+                <span>Pending Tokens</span>
+                <span className="bg-white/10 px-2 py-0.5 rounded-full text-[10px]">{pendingInvites.length}</span>
+              </h2>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                {pendingInvites.map((invite) => (
+                  <div
+                    key={invite.token}
+                    className="flex flex-col gap-3 p-3 border border-white/5 rounded-lg bg-black/30 hover:bg-black/50 transition-colors group"
                   >
-                    Copy
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    icon={Trash2}
-                    onClick={() => handleRevoke(invite.token)}
-                  />
+                    <div className="flex justify-between items-start">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white capitalize flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${invite.role === 'driver' ? 'bg-neon-blue' : 'bg-neon-purple'}`} />
+                          {invite.role}
+                        </p>
+                        {invite.email ? (
+                          <p className="text-[10px] text-muted-foreground mt-1 truncate">{invite.email}</p>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">Open Link</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground/70">
+                        Exp: {new Date(invite.expiresAt).toLocaleDateString()}
+                      </p>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
+                          onClick={() => copyLink(`${window.location.origin}/join/${invite.token}`)}
+                          title="Copy Link"
+                        >
+                          <Copy size={12} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleRevoke(invite.token)}
+                          title="Revoke Token"
+                        >
+                          <Trash2 size={12} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: User Management */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="glass-dark border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-full">
+            <div className="p-6 border-b border-white/10 flex flex-col sm:flex-row gap-4 items-center justify-between bg-black/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                  <UsersIcon size={20} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-widest text-white">Network Operatives</h2>
+                  <p className="text-xs text-muted-foreground">{filteredUsers.length} Active Nodes</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
-      {/* ── Users Table ─────────────────────────────────────────────────────── */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold tracking-tight">
-            Team Members ({filteredUsers.length})
-          </h2>
-          <button
-            onClick={fetchAll}
-            className="p-2 text-brand-zinc-400 hover:text-black transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw size={16} />
-          </button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <Input
+                    icon={Search}
+                    placeholder="Search personnel..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white h-10"
+                  />
+                </div>
+                <button
+                  onClick={fetchAll}
+                  className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 transition-all"
+                  title="Refresh Roster"
+                >
+                  <RefreshCw size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-x-auto">
+              {filteredUsers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <ShieldAlert size={40} className="text-muted-foreground opacity-50 mb-4" />
+                  <p className="text-sm font-bold text-white uppercase tracking-widest">No Personnel Found</p>
+                  <p className="text-xs text-muted-foreground mt-2">The roster is empty or no matches exist.</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                      <th className="text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">ID / Operative</th>
+                      <th className="text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Comms</th>
+                      <th className="text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Clearance</th>
+                      <th className="text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Status</th>
+                      <th className="text-right py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Override</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 bg-black/20">
+                    {filteredUsers.map((user) => (
+                      <tr key={user._id} className="hover:bg-white/[0.04] transition-colors group">
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-white flex items-center gap-2">
+                            <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center text-[10px] font-mono text-neon-blue border border-white/5">
+                              {user.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            {user.displayName}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-xs text-muted-foreground">{user.email}</td>
+                        <td className="py-4 px-6">
+                          <span className={`px-2 py-1 text-[9px] font-bold uppercase tracking-widest rounded-full border ${
+                            user.role === 'admin' ? 'bg-neon-pink/10 text-neon-pink border-neon-pink/20 shadow-[0_0_8px_rgba(255,0,102,0.2)]' :
+                            user.role === 'driver' ? 'bg-neon-blue/10 text-neon-blue border-neon-blue/20' :
+                            'bg-white/10 text-white border-white/20'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          {user.isActive ? (
+                            <span className="flex items-center gap-1.5 text-neon-green text-[10px] font-bold uppercase tracking-widest">
+                              <span className="w-1.5 h-1.5 rounded-full bg-neon-green shadow-[0_0_8px_rgba(0,255,102,0.8)]" /> Active
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-destructive text-[10px] font-bold uppercase tracking-widest">
+                              <span className="w-1.5 h-1.5 rounded-full bg-destructive shadow-[0_0_8px_rgba(220,38,38,0.8)]" /> Suspended
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <Button
+                            size="sm"
+                            variant={user.isActive ? 'outline' : 'neon'}
+                            className={`text-xs px-3 py-1 h-auto ${user.isActive ? 'border-white/20 text-muted-foreground hover:text-white hover:bg-white/10 hover:border-white/40' : ''}`}
+                            onClick={() => handleToggleStatus(user._id)}
+                            disabled={user.role === 'admin'} // Prevent toggling admins to avoid lockout
+                          >
+                            {user.isActive ? 'Suspend' : 'Reinstate'}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
-
-        <div className="mb-4">
-          <Input
-            icon={Search}
-            placeholder="Search by name or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {filteredUsers.length === 0 ? (
-          <div className="text-center py-12 text-brand-zinc-400 text-sm">
-            No team members yet. Invite someone above to get started.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-brand-zinc-200 bg-brand-zinc-50">
-                  <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
-                    Name
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
-                    Email
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
-                    Role
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-brand-zinc-100">
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-brand-zinc-50/80 transition-colors">
-                    <td className="py-3 px-4 font-medium text-black">{user.displayName}</td>
-                    <td className="py-3 px-4 text-brand-zinc-500">{user.email}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-sm bg-brand-zinc-100 text-brand-zinc-700">
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {user.isActive ? (
-                        <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
-                          <Check size={14} /> Active
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-red-500 text-xs font-medium">
-                          <Ban size={14} /> Inactive
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Button
-                        size="sm"
-                        variant={user.isActive ? 'danger' : 'secondary'}
-                        onClick={() => handleToggleStatus(user._id)}
-                      >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+        
+      </div>
     </DashboardLayout>
   );
 }

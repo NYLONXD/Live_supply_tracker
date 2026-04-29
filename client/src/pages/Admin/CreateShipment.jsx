@@ -1,7 +1,8 @@
 // client/src/pages/Admin/CreateShipment.jsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Package, Route, Phone, UserRound, Map, RotateCcw } from 'lucide-react';
+import { MapPin, Package, Route, Phone, UserRound, Map, RotateCcw, Hexagon, Crosshair } from 'lucide-react';
+import { formatETA } from '../../utils/formatTime';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
@@ -48,6 +49,29 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
         streetViewControl: false,
         fullscreenControl: false,
         zoomControl: true,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#212121" }] },
+          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
+          { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#757575" }] },
+          { featureType: "administrative.country", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+          { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+          { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
+          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#181818" }] },
+          { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { featureType: "poi.park", elementType: "labels.text.stroke", stylers: [{ color: "#1b1b1b" }] },
+          { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
+          { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+          { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#373737" }] },
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
+          { featureType: "road.highway.controlled_access", elementType: "geometry", stylers: [{ color: "#4e4e4e" }] },
+          { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { featureType: "transit", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#3d3d3d" }] }
+        ]
       });
     }
     const map = mapInstanceRef.current;
@@ -63,9 +87,9 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 9,
-          fillColor: '#16a34a',
+          fillColor: '#00ff66',
           fillOpacity: 1,
-          strokeColor: '#fff',
+          strokeColor: '#000',
           strokeWeight: 2,
         },
       }),
@@ -79,9 +103,9 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 9,
-          fillColor: '#dc2626',
+          fillColor: '#ff003c',
           fillOpacity: 1,
-          strokeColor: '#fff',
+          strokeColor: '#000',
           strokeWeight: 2,
         },
       }),
@@ -96,7 +120,7 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
       routeLineRef.current = new google.maps.Polyline({
         path: routeGeometry.map(([lng, lat]) => ({ lat, lng })),
         geodesic: true,
-        strokeColor: '#111111',
+        strokeColor: '#00f0ff',
         strokeOpacity: 0.9,
         strokeWeight: 4,
       });
@@ -124,22 +148,25 @@ function RouteMapPreview({ pickup, delivery, routeGeometry }) {
   if (!bothSelected) return null;
 
   return (
-    <div className="mt-4 rounded-sm border border-brand-zinc-200 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-brand-zinc-50 border-b border-brand-zinc-200">
-        <Map size={14} className="text-brand-zinc-500" />
-        <span className="text-xs font-bold uppercase tracking-wider text-brand-zinc-500">
+    <div className="mt-6 rounded-xl border border-white/10 overflow-hidden shadow-2xl relative">
+      <div className="absolute top-0 right-0 p-2 z-10 pointer-events-none opacity-50">
+        <Crosshair size={40} className="text-neon-blue" />
+      </div>
+      <div className="flex items-center gap-2 px-4 py-3 bg-black/60 border-b border-white/10 backdrop-blur-md">
+        <Map size={14} className="text-neon-blue" />
+        <span className="text-xs font-bold uppercase tracking-widest text-white">
           {routeGeometry?.length ? 'Calculated Route' : 'Location Preview'}
         </span>
         <div className="ml-auto flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-[10px] font-medium text-brand-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-green-600 inline-block" />Pickup
+          <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+            <span className="w-2 h-2 rounded-full bg-neon-green inline-block shadow-[0_0_8px_rgba(0,255,102,0.8)]" />Pickup
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] font-medium text-brand-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-red-600 inline-block" />Delivery
+          <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase text-muted-foreground">
+            <span className="w-2 h-2 rounded-full bg-neon-pink inline-block shadow-[0_0_8px_rgba(255,0,60,0.8)]" />Delivery
           </span>
         </div>
       </div>
-      <div ref={mapRef} className="w-full h-64" />
+      <div ref={mapRef} className="w-full h-72" />
     </div>
   );
 }
@@ -309,193 +336,237 @@ export default function AdminCreateShipment() {
 
   return (
     <DashboardLayout title="Create Shipment">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl relative z-10 animate-modern-fade">
 
         {/* Draft restored banner */}
         {draftBanner && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-            <span className="text-amber-800 font-medium">
-              📝 We restored your unsaved draft. Continue where you left off.
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-neon-blue/30 bg-neon-blue/5 px-4 py-3 text-sm shadow-[0_0_15px_rgba(0,240,255,0.1)]">
+            <span className="text-neon-blue font-bold tracking-wide flex items-center gap-2">
+              <RotateCcw size={16} /> Draft restored. Continue where you left off.
             </span>
             <button
               type="button"
               onClick={discardDraft}
-              className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 font-semibold text-xs shrink-0"
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-white font-bold text-[10px] uppercase tracking-widest transition-colors"
             >
-              <RotateCcw size={13} /> Discard
+              Discard
             </button>
           </div>
         )}
 
-        <Card variant="elevated">
-          <form onSubmit={handleSubmit} className="space-y-6">
-
-            {/* Customer Info */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input
-                label="Customer Name"
-                name="customerName"
-                value={formData.customerName}
-                onChange={handleTextChange}
-                placeholder="Business or customer name"
-                required
-                icon={UserRound}
-              />
-              <Input
-                label="Customer Phone"
-                name="customerPhone"
-                value={formData.customerPhone}
-                onChange={handleTextChange}
-                placeholder="Optional contact number"
-                icon={Phone}
-              />
+        <div className="glass-dark border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green via-neon-blue to-neon-purple" />
+          
+          {/* Header Section */}
+          <div className="relative overflow-hidden bg-black/40 px-8 py-10 border-b border-white/10">
+            <div className="absolute top-1/2 right-10 -translate-y-1/2 opacity-10 pointer-events-none">
+              <Package size={140} className="text-neon-blue" />
             </div>
-
-            {/* Location Inputs */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <GooglePlacesInput
-                  label="Pickup Address"
-                  name="pickup"
-                  value={formData.pickup.address}
-                  onChange={handleAddressText('pickup')}
-                  onPlaceSelect={handlePickupSelect}
-                  placeholder="Search pickup location"
-                  required
-                />
-                {formData.pickup.lat && (
-                  <p className="mt-1.5 text-[10px] font-medium text-green-600 flex items-center gap-1">
-                    <MapPin size={10} /> Location confirmed
-                  </p>
-                )}
+            <div className="relative z-10">
+              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(255,255,255,0.1)] border border-white/10">
+                <Hexagon size={24} className="text-white" />
               </div>
+              <h2 className="text-3xl font-extrabold tracking-tight text-white mb-2">New Shipment</h2>
+              <p className="text-muted-foreground text-sm max-w-lg">
+                Enter logistics details to deploy a new tracking instance to the global node network.
+              </p>
+            </div>
+          </div>
 
+          <div className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
+
+              {/* Customer Info */}
               <div>
-                <GooglePlacesInput
-                  label="Delivery Address"
-                  name="delivery"
-                  value={formData.delivery.address}
-                  onChange={handleAddressText('delivery')}
-                  onPlaceSelect={handleDeliverySelect}
-                  placeholder="Search delivery location"
-                  required
-                />
-                {formData.delivery.lat && (
-                  <p className="mt-1.5 text-[10px] font-medium text-green-600 flex items-center gap-1">
-                    <MapPin size={10} /> Location confirmed
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Map Preview */}
-            <RouteMapPreview
-              pickup={formData.pickup}
-              delivery={formData.delivery}
-              routeGeometry={routeDetails?.routeGeometry ?? null}
-            />
-
-            {/* Notes */}
-            <div>
-              <label htmlFor="notes" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">
-                Shipment Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={4}
-                value={formData.notes}
-                onChange={handleTextChange}
-                placeholder="Package details, cash on delivery notes, special handling, etc."
-                className="w-full rounded-sm border border-brand-zinc-200 bg-white px-4 py-2.5 text-black placeholder-brand-zinc-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-              />
-            </div>
-
-            {/* Route Summary */}
-            <Card className="border-dashed">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="flex items-center gap-2 text-lg font-semibold text-black">
-                    <Route size={18} /> Google route summary
-                  </h3>
-                  <p className="mt-1 text-sm text-brand-zinc-500">
-                    {canEstimate
-                      ? 'Both locations confirmed — ready to calculate.'
-                      : 'Select both locations from the suggestions above.'}
-                  </p>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 flex items-center gap-2">
+                  <UserRound size={14} className="text-neon-blue" /> Client Intel
+                </h3>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Input
+                    label="Customer Name"
+                    name="customerName"
+                    value={formData.customerName}
+                    onChange={handleTextChange}
+                    placeholder="Business or customer name"
+                    required
+                    icon={UserRound}
+                    className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white"
+                  />
+                  <Input
+                    label="Customer Phone"
+                    name="customerPhone"
+                    value={formData.customerPhone}
+                    onChange={handleTextChange}
+                    placeholder="Optional contact number"
+                    icon={Phone}
+                    className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white"
+                  />
                 </div>
+              </div>
+
+              <div className="h-px w-full bg-white/5" />
+
+              {/* Location Inputs */}
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4 flex items-center gap-2">
+                  <MapPin size={14} className="text-neon-green" /> Trajectory Vectors
+                </h3>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <GooglePlacesInput
+                      label="Origin / Pickup Address"
+                      name="pickup"
+                      value={formData.pickup.address}
+                      onChange={handleAddressText('pickup')}
+                      onPlaceSelect={handlePickupSelect}
+                      placeholder="Search origin location"
+                      required
+                    />
+                    {formData.pickup.lat && (
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-neon-green flex items-center gap-1">
+                        <MapPin size={12} /> Origin Locked
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <GooglePlacesInput
+                      label="Destination / Delivery Address"
+                      name="delivery"
+                      value={formData.delivery.address}
+                      onChange={handleAddressText('delivery')}
+                      onPlaceSelect={handleDeliverySelect}
+                      placeholder="Search destination location"
+                      required
+                    />
+                    {formData.delivery.lat && (
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-neon-pink flex items-center gap-1">
+                        <MapPin size={12} /> Destination Locked
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Map Preview */}
+                <RouteMapPreview
+                  pickup={formData.pickup}
+                  delivery={formData.delivery}
+                  routeGeometry={routeDetails?.routeGeometry ?? null}
+                />
+              </div>
+
+              {/* Route Summary (Glass Card inside Form) */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-6 relative overflow-hidden group">
+                {/* Subtle highlight effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-neon-blue/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between relative z-10">
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white">
+                      <Route size={16} className="text-neon-blue" /> Telemetry Calculation
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {canEstimate
+                        ? 'Nodes acquired. Ready for route synthesis.'
+                        : 'Awaiting complete trajectory vectors.'}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={calculateRoute}
+                    loading={estimating}
+                    disabled={!canEstimate}
+                    variant={canEstimate ? 'neon' : 'outline'}
+                    className={!canEstimate ? 'border-white/20 text-muted-foreground' : ''}
+                    icon={Route}
+                  >
+                    Synthesize Route
+                  </Button>
+                </div>
+
+                {routeDetails && (
+                  <div className="mt-6 grid gap-4 md:grid-cols-3 relative z-10">
+                    <div className="rounded-lg border border-white/10 bg-black/40 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Distance</p>
+                      <p className="mt-1 text-2xl font-black text-white tracking-tighter">{routeDetails.distanceKm} <span className="text-sm font-normal text-muted-foreground">km</span></p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/40 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Est. Duration</p>
+                      <p className="mt-1 text-2xl font-black text-neon-green tracking-tighter">{formatETA(routeDetails.durationMinutes)}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/40 p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Waypoints</p>
+                      <p className="mt-1 text-2xl font-black text-white tracking-tighter">{routeDetails.routeGeometry.length}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px w-full bg-white/5" />
+
+              {/* Notes & Assignment */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <label htmlFor="notes" className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Package size={14} className="text-white" /> Operational Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={5}
+                    value={formData.notes}
+                    onChange={handleTextChange}
+                    placeholder="Package details, special handling..."
+                    className="w-full rounded-lg border border-white/10 bg-black/50 px-4 py-3 text-white placeholder-zinc-600 focus:border-neon-blue focus:outline-none focus:ring-1 focus:ring-neon-blue transition-colors resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="selectedDriver" className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <Crosshair size={14} className="text-neon-pink" /> Fleet Assignment
+                  </label>
+                  <select
+                    id="selectedDriver"
+                    name="selectedDriver"
+                    value={formData.selectedDriver}
+                    onChange={handleTextChange}
+                    onFocus={fetchDrivers}
+                    className="w-full rounded-lg border border-white/10 bg-black/50 px-4 py-3 text-white focus:border-neon-blue focus:outline-none focus:ring-1 focus:ring-neon-blue transition-colors appearance-none"
+                  >
+                    <option value="" className="text-zinc-500">Unassigned (Open Pool)</option>
+                    {drivers.map((driver) => (
+                      <option key={driver._id} value={driver._id}>
+                        {driver.displayName}{driver.vehicleInfo ? ` • ${driver.vehicleInfo}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-muted-foreground">Select an operator to dispatch immediately, or leave unassigned to enter the general queue.</p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3 border-t border-white/10 pt-8 sm:flex-row mt-4">
                 <Button
                   type="button"
-                  onClick={calculateRoute}
-                  loading={estimating}
-                  disabled={!canEstimate}
-                  icon={MapPin}
+                  variant="outline"
+                  className="sm:flex-1 border-white/20 text-white hover:bg-white/10"
+                  onClick={() => navigate('/admin/shipments')}
                 >
-                  Calculate Route
+                  Abort
+                </Button>
+                <Button
+                  type="submit"
+                  className="sm:flex-1 bg-white text-black hover:bg-zinc-200"
+                  loading={loading}
+                  disabled={!routeDetails}
+                  size="lg"
+                >
+                  Deploy Shipment
                 </Button>
               </div>
-
-              {routeDetails && (
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div className="rounded-sm border border-brand-zinc-200 bg-brand-zinc-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Distance</p>
-                    <p className="mt-2 text-2xl font-bold text-black">{routeDetails.distanceKm} km</p>
-                  </div>
-                  <div className="rounded-sm border border-brand-zinc-200 bg-brand-zinc-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">ETA</p>
-                    <p className="mt-2 text-2xl font-bold text-black">{routeDetails.durationMinutes} min</p>
-                  </div>
-                  <div className="rounded-sm border border-brand-zinc-200 bg-brand-zinc-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">Route points</p>
-                    <p className="mt-2 text-2xl font-bold text-black">{routeDetails.routeGeometry.length}</p>
-                  </div>
-                </div>
-              )}
-            </Card>
-
-            {/* Driver assignment */}
-            <div>
-              <label htmlFor="selectedDriver" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-brand-zinc-500">
-                Assign Driver
-              </label>
-              <select
-                id="selectedDriver"
-                name="selectedDriver"
-                value={formData.selectedDriver}
-                onChange={handleTextChange}
-                onFocus={fetchDrivers}
-                className="w-full rounded-sm border border-brand-zinc-200 bg-white px-4 py-2.5 text-black focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-              >
-                <option value="">Create as unassigned</option>
-                {drivers.map((driver) => (
-                  <option key={driver._id} value={driver._id}>
-                    {driver.displayName}{driver.vehicleInfo ? ` • ${driver.vehicleInfo}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-3 border-t border-brand-zinc-200 pt-6 sm:flex-row">
-              <Button
-                type="button"
-                variant="ghost"
-                className="sm:flex-1"
-                onClick={() => navigate('/admin/shipments')}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="sm:flex-1"
-                loading={loading}
-                disabled={!routeDetails}
-              >
-                Create Shipment
-              </Button>
-            </div>
-          </form>
-        </Card>
+            </form>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

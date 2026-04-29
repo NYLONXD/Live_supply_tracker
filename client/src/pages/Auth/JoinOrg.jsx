@@ -1,10 +1,9 @@
 // client/src/pages/Auth/JoinOrg.jsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Lock, User, Mail, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Lock, User, Mail, Phone, AlertCircle, CheckCircle2, Hexagon } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import Logo from '../../components/common/common/Logo';
 import useAuthStore from '../../stores/authStore';
 import api from '../../services/api';
 
@@ -30,7 +29,6 @@ export default function JoinOrg() {
     confirmPassword: '',
   });
 
-  // ── Validate token on mount ────────────────────────────────────────────────
   useEffect(() => {
     if (!token) {
       setInvalid(true);
@@ -51,9 +49,6 @@ export default function JoinOrg() {
 
         setInvite(data);
 
-        // Pre-seed formData.email so the controlled input is always consistent.
-        // The field will be disabled when invite.email is set, so the user
-        // can't change it — but the binding stays clean.
         if (data?.email) {
           setFormData((prev) => ({ ...prev, email: data.email }));
         }
@@ -87,29 +82,22 @@ export default function JoinOrg() {
     setError('');
 
     const fullName = formData.displayName.trim();
-    const email    = formData.email.trim();   // always from formData (pre-seeded or user-typed)
+    const email    = formData.email.trim();
     const phone    = formData.phone.trim();
 
-    // ── Client-side validation ─────────────────────────────────────────────
-    if (!fullName)
-      return setError('Full name is required.');
-    if (!email)
-      return setError('Email is required.');
-    if (!EMAIL_REGEX.test(email))
-      return setError('Invalid email address.');
-    if (phone && !PHONE_REGEX.test(phone))
-      return setError('Invalid phone number.');
-    if (formData.password.length < 6)
-      return setError('Password must be at least 6 characters.');
-    if (formData.password !== formData.confirmPassword)
-      return setError('Passwords do not match.');
+    if (!fullName) return setError('Full name is required.');
+    if (!email) return setError('Email is required.');
+    if (!EMAIL_REGEX.test(email)) return setError('Invalid email address.');
+    if (phone && !PHONE_REGEX.test(phone)) return setError('Invalid phone number.');
+    if (formData.password.length < 6) return setError('Password must be at least 6 characters.');
+    if (formData.password !== formData.confirmPassword) return setError('Passwords do not match.');
 
     try {
       setSubmitting(true);
 
       const { data } = await api.post(`/api/invites/${token}/accept`, {
         displayName: fullName,
-        email,             // server will verify this against invite.email if it was pre-set
+        email,
         phone:       phone || undefined,
         password:    formData.password,
       });
@@ -117,7 +105,7 @@ export default function JoinOrg() {
       setAuth(data);
 
       navigate(
-        data?.role === 'driver' ? '/driver/dashboard' : '/track',
+        data?.role === 'driver' ? '/driver/dashboard' : '/user/dashboard',
         { replace: true }
       );
     } catch (err) {
@@ -127,73 +115,74 @@ export default function JoinOrg() {
     }
   };
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background dark">
+        <div className="w-12 h-12 border-4 border-white/20 border-t-neon-blue rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]" />
       </div>
     );
   }
 
-  // ── Invalid / expired ──────────────────────────────────────────────────────
   if (invalid) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-white">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle size={28} className="text-red-600" />
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background dark">
+        <div className="text-center max-w-sm glass-dark p-8 rounded-2xl border border-white/10 animate-modern-fade">
+          <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-destructive/30 shadow-[0_0_20px_rgba(220,38,38,0.2)]">
+            <AlertCircle size={28} className="text-destructive" />
           </div>
-          <h1 className="text-xl font-bold mb-2 text-black">Invalid invite link</h1>
-          <p className="text-zinc-500 text-sm mb-6">
+          <h1 className="text-2xl font-bold mb-2 text-white tracking-tight">Invalid Link</h1>
+          <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
             This link has expired, is invalid, or has already been used.
-            Ask your admin to send a new invite.
+            Ask your administrator to send a new invitation.
           </p>
-          <Link to="/login">
-            <Button variant="outline">Go to Login</Button>
+          <Link to="/login" className="w-full">
+            <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">Return to Login</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  // ── Join form ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
-      <div className="w-full max-w-md bg-white border border-zinc-200 shadow-2xl shadow-zinc-200/50 p-8 md:p-10 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-black" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden dark text-foreground">
+      {/* Immersive Background Effects */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[10%] left-[10%] w-[600px] h-[600px] bg-neon-purple/10 rounded-full blur-[120px] animate-float" />
+        <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] bg-neon-blue/10 rounded-full blur-[120px] animate-float" style={{ animationDelay: '3s' }} />
+      </div>
+
+      <div className="w-full max-w-md glass-dark rounded-2xl p-8 md:p-10 relative z-10 overflow-hidden shadow-2xl border border-white/10 animate-modern-fade">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-green via-neon-blue to-neon-purple" />
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Logo showText={false} />
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(255,255,255,0.1)] border border-white/10">
+            <Hexagon size={24} className="text-white" />
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200 bg-zinc-50 text-xs font-bold uppercase tracking-wider mb-3 text-zinc-500">
-            <CheckCircle2 size={12} className="text-green-500" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-[10px] font-bold uppercase tracking-wider mb-4 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.1)]">
+            <CheckCircle2 size={14} className="text-green-400" />
             You've been invited
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-black mb-1">
+          <h1 className="text-2xl font-bold tracking-tight text-white mb-2">
             Join {invite?.organization || 'Organization'}
           </h1>
-          <p className="text-zinc-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             You'll be added as a{' '}
-            <span className="font-semibold text-black capitalize">
+            <span className="font-semibold text-white capitalize bg-white/10 px-2 py-0.5 rounded-sm">
               {invite?.role || 'member'}
-            </span>.
+            </span>
           </p>
         </div>
 
-        {/* Error banner */}
         {error && (
-          <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 rounded-sm px-4 py-3 mb-6 text-sm">
+          <div className="flex items-start gap-3 bg-destructive/10 border border-destructive/30 text-destructive rounded-md px-4 py-3 mb-6 text-sm animate-modern-fade">
             <AlertCircle size={16} className="shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Full name"
@@ -202,6 +191,7 @@ export default function JoinOrg() {
             value={formData.displayName}
             onChange={handleChange('displayName')}
             required
+            className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white placeholder:text-zinc-600"
           />
 
           <Input
@@ -209,18 +199,20 @@ export default function JoinOrg() {
             type="email"
             icon={Mail}
             placeholder="you@example.com"
-            value={formData.email}             // ✅ always from formData — consistent binding
+            value={formData.email}
             onChange={handleChange('email')}
-            disabled={Boolean(invite?.email)}  // locked when admin pre-filled it
+            disabled={Boolean(invite?.email)}
             required
+            className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white placeholder:text-zinc-600 disabled:opacity-50"
           />
 
           <Input
             label="Phone (optional)"
             icon={Phone}
-            placeholder="+91 98765 43210"
+            placeholder="+1 234 567 8900"
             value={formData.phone}
             onChange={handleChange('phone')}
+            className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white placeholder:text-zinc-600"
           />
 
           <Input
@@ -231,6 +223,7 @@ export default function JoinOrg() {
             value={formData.password}
             onChange={handleChange('password')}
             required
+            className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white placeholder:text-zinc-600"
           />
 
           <Input
@@ -241,16 +234,17 @@ export default function JoinOrg() {
             value={formData.confirmPassword}
             onChange={handleChange('confirmPassword')}
             required
+            className="bg-black/50 border-white/10 focus-visible:ring-neon-blue text-white placeholder:text-zinc-600"
           />
 
-          <Button type="submit" loading={submitting} className="w-full mt-2">
+          <Button type="submit" loading={submitting} className="w-full mt-6 bg-white text-black hover:bg-zinc-200" size="lg">
             Join {invite?.organization || 'Organization'}
           </Button>
         </form>
 
-        <p className="text-center text-xs text-zinc-400 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-8">
           Already have an account?{' '}
-          <Link to="/login" className="text-black font-medium hover:underline">
+          <Link to="/login" className="text-white font-medium hover:text-neon-blue transition-colors">
             Sign in
           </Link>
         </p>
