@@ -1,8 +1,7 @@
 // client/src/pages/Auth/VerifyEmail.jsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ArrowLeft, RefreshCw, CheckCircle2 } from 'lucide-react';
-import Logo from '../../components/common/common/Logo';
+import { Mail, ArrowLeft, RefreshCw, CheckCircle2, Hexagon, ShieldCheck } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import { authAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -11,12 +10,13 @@ export default function VerifyEmail() {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
 
-  // 6 individual digit refs for auto-advance
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [verified, setVerified] = useState(false);
   const inputRefs = useRef([]);
+  const autoSentRef = useRef(false);
 
   // If user is already verified, go to correct dashboard
   useEffect(() => {
@@ -32,6 +32,14 @@ export default function VerifyEmail() {
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
+  // Auto-send OTP on mount when user is unverified (e.g. after login with expired/missing OTP)
+  useEffect(() => {
+    if (user && !user.isEmailVerified && !autoSentRef.current) {
+      autoSentRef.current = true;
+      handleResendSilent();
+    }
+  }, [user]);
+
   const redirectToDashboard = (role) => {
     switch (role) {
       case 'admin':  navigate('/admin/dashboard',  { replace: true }); break;
@@ -42,17 +50,15 @@ export default function VerifyEmail() {
 
   // ── Handle digit input ────────────────────────────────────────────────────
   const handleDigitChange = (index, value) => {
-    const cleaned = value.replace(/\D/g, '').slice(-1); // only digits, last char
+    const cleaned = value.replace(/\D/g, '').slice(-1);
     const newDigits = [...digits];
     newDigits[index] = cleaned;
     setDigits(newDigits);
 
-    // Auto-advance
     if (cleaned && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all 6 digits filled
     if (cleaned && index === 5) {
       const otp = [...newDigits.slice(0, 5), cleaned].join('');
       if (otp.length === 6) {
@@ -65,10 +71,8 @@ export default function VerifyEmail() {
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-    // Allow Ctrl+V / Cmd+V
   };
 
-  // Handle paste anywhere on the 6-box area
   const handlePaste = (e) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
@@ -85,12 +89,11 @@ export default function VerifyEmail() {
     setLoading(true);
     try {
       await authAPI.verifyEmail({ otp });
-      // Update user in store — mark as verified
+      setVerified(true);
       setAuth({ ...user, isEmailVerified: true });
       toast.success('Email verified! Welcome aboard 🎉');
-      redirectToDashboard(user?.role);
+      setTimeout(() => redirectToDashboard(user?.role), 1500);
     } catch (err) {
-      // Clear digits on wrong OTP
       setDigits(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
@@ -108,7 +111,7 @@ export default function VerifyEmail() {
     submitOTP(otp);
   };
 
-  // ── Resend OTP ────────────────────────────────────────────────────────────
+  // ── Resend OTP (with toast) ───────────────────────────────────────────────
   const handleResend = async () => {
     if (resendCooldown > 0 || resending) return;
     setResending(true);
@@ -125,120 +128,198 @@ export default function VerifyEmail() {
     }
   };
 
+  // ── Silent resend (auto-trigger on mount, no toast on success) ────────────
+  const handleResendSilent = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setResending(true);
+    try {
+      await authAPI.resendOTP();
+      setResendCooldown(60);
+    } catch {
+      // silently fail — user can manually resend
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Mask email for display
+  const maskedEmail = (() => {
+    const email = user?.email || '';
+    if (!email.includes('@')) return email;
+    const [local, domain] = email.split('@');
+    if (local.length <= 2) return email;
+    return `${local[0]}${'•'.repeat(Math.min(local.length - 2, 6))}${local[local.length - 1]}@${domain}`;
+  })();
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-white bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
-      <div className="w-full max-w-md bg-white border border-zinc-200 shadow-2xl shadow-zinc-200/50 p-8 md:p-10 relative overflow-hidden">
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-black" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0a0a0b] relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[15%] left-[15%] w-[500px] h-[500px] bg-amber-400/[0.06] rounded-full blur-[120px] animate-float" />
+        <div className="absolute bottom-[20%] right-[15%] w-[400px] h-[400px] bg-neon-purple/[0.05] rounded-full blur-[100px] animate-float" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-[60%] left-[50%] w-[300px] h-[300px] bg-neon-blue/[0.04] rounded-full blur-[80px] animate-float" style={{ animationDelay: '1.5s' }} />
+      </div>
 
-        {/* Header */}
-        <div className="text-center mb-10">
-          <Logo linkTo="/" size="md" showText className="mb-6" />
+      {/* Diagonal stripe texture */}
+      <div
+        className="absolute inset-0 opacity-[0.03] z-0"
+        style={{
+          backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            #ffffff 0px,
+            #ffffff 1px,
+            transparent 1px,
+            transparent 14px
+          )`,
+        }}
+      />
 
-          {/* Mail icon */}
-          <div className="w-16 h-16 bg-zinc-50 border-2 border-zinc-200 rounded-full flex items-center justify-center mx-auto mb-5">
-            <Mail size={28} className="text-zinc-700" />
-          </div>
+      <div className="w-full max-w-md relative z-10 animate-modern-fade">
+        {/* Card */}
+        <div className="glass-dark rounded-2xl p-8 md:p-10 relative overflow-hidden shadow-[0_40px_120px_-20px_rgba(0,0,0,0.7)]">
+          {/* Gradient accent line */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500" />
 
-          <h1 className="text-2xl font-bold tracking-tight text-black mb-2">
-            Check your email
-          </h1>
-          <p className="text-zinc-500 text-sm leading-relaxed">
-            We sent a 6-digit code to{' '}
-            <span className="font-semibold text-black">{user?.email || 'your email'}</span>.
-            <br />Enter it below to verify your account.
-          </p>
+          {/* Success State */}
+          {verified ? (
+            <div className="text-center py-6 animate-modern-fade">
+              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.15)]">
+                <CheckCircle2 size={36} className="text-green-400" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Email Verified!</h1>
+              <p className="text-zinc-400 text-sm">Redirecting you to your dashboard…</p>
+              <div className="mt-6 flex justify-center">
+                <div className="w-6 h-6 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="w-14 h-14 bg-amber-400/10 rounded-xl flex items-center justify-center mx-auto mb-6 border border-amber-400/20 shadow-[0_0_30px_rgba(251,191,36,0.1)]">
+                  <Mail size={26} className="text-amber-400" />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-white mb-2">
+                  Check your email
+                </h1>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  We sent a 6-digit code to{' '}
+                  <span className="font-semibold text-white">{maskedEmail || 'your email'}</span>
+                  <br />Enter it below to verify your account.
+                </p>
+              </div>
+
+              {/* OTP Form */}
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* 6-digit input boxes */}
+                <div className="flex justify-center gap-2.5" onPaste={handlePaste}>
+                  {digits.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => (inputRefs.current[i] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleDigitChange(i, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(i, e)}
+                      disabled={loading}
+                      className={`
+                        w-12 h-14 text-center text-xl font-bold rounded-lg
+                        transition-all duration-200 outline-none
+                        ${digit
+                          ? 'bg-amber-400/10 border-2 border-amber-400/50 text-white shadow-[0_0_15px_rgba(251,191,36,0.15)]'
+                          : 'bg-white/[0.04] border-2 border-white/10 text-white hover:border-white/20 focus:border-amber-400/50 focus:bg-amber-400/[0.05] focus:shadow-[0_0_15px_rgba(251,191,36,0.1)]'
+                        }
+                        disabled:opacity-40 disabled:cursor-not-allowed
+                        placeholder:text-zinc-600
+                      `}
+                    />
+                  ))}
+                </div>
+
+                {/* Timer hint */}
+                <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs">
+                  <ShieldCheck size={12} />
+                  <span>Code expires in <strong className="text-zinc-300">10 minutes</strong></span>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={loading || digits.join('').length !== 6}
+                  className="w-full h-12 bg-white text-zinc-900 font-semibold text-sm rounded-xl
+                    hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed
+                    transition-all duration-200 flex items-center justify-center gap-2
+                    shadow-[0_4px_20px_rgba(255,255,255,0.1)]"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40" strokeDashoffset="10" />
+                      </svg>
+                      Verifying…
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} />
+                      Verify Email
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Resend */}
+              <div className="mt-7 pt-6 border-t border-white/[0.06] text-center">
+                <p className="text-zinc-500 text-xs mb-3">Didn't receive the code?</p>
+                <button
+                  onClick={handleResend}
+                  disabled={resendCooldown > 0 || resending}
+                  className="inline-flex items-center gap-2 text-sm font-semibold
+                    text-amber-400 hover:text-amber-300
+                    disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
+                  {resendCooldown > 0
+                    ? `Resend in ${resendCooldown}s`
+                    : resending
+                    ? 'Sending…'
+                    : 'Resend Code'}
+                </button>
+              </div>
+
+              {/* Back to login */}
+              <div className="mt-5 text-center">
+                <Link
+                  to="/login"
+                  onClick={() => useAuthStore.getState().logout()}
+                  className="inline-flex items-center gap-2 text-xs text-zinc-500 hover:text-white transition-colors duration-200"
+                >
+                  <ArrowLeft size={13} />
+                  Use a different account
+                </Link>
+              </div>
+
+              {/* Hint */}
+              <p className="mt-6 text-[10px] text-zinc-600 text-center leading-relaxed">
+                Check your spam or promotions folder if you don't see the email.
+              </p>
+            </>
+          )}
         </div>
 
-        {/* OTP Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* 6-digit input boxes */}
-          <div className="flex justify-center gap-3" onPaste={handlePaste}>
-            {digits.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => (inputRefs.current[i] = el)}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleDigitChange(i, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(i, e)}
-                disabled={loading}
-                className={`
-                  w-12 h-14 text-center text-xl font-bold
-                  border-2 rounded-sm
-                  transition-all duration-150 outline-none
-                  ${digit
-                    ? 'border-black bg-black text-white'
-                    : 'border-zinc-200 bg-white text-black hover:border-zinc-400 focus:border-black'
-                  }
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                `}
-              />
-            ))}
-          </div>
-
-          {/* Submit button */}
-          <button
-            type="submit"
-            disabled={loading || digits.join('').length !== 6}
-            className="w-full h-12 bg-black text-white font-semibold text-sm rounded-sm
-              hover:bg-zinc-800 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-150 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40" strokeDashoffset="10" />
-                </svg>
-                Verifying…
-              </>
-            ) : (
-              <>
-                <CheckCircle2 size={16} />
-                Verify Email
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Resend */}
-        <div className="mt-6 pt-5 border-t border-zinc-100 text-center">
-          <p className="text-zinc-500 text-sm mb-3">Didn't receive the code?</p>
-          <button
-            onClick={handleResend}
-            disabled={resendCooldown > 0 || resending}
-            className="inline-flex items-center gap-2 text-sm font-semibold
-              text-black underline underline-offset-2 hover:opacity-60
-              disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            <RefreshCw size={14} className={resending ? 'animate-spin' : ''} />
-            {resendCooldown > 0
-              ? `Resend in ${resendCooldown}s`
-              : resending
-              ? 'Sending…'
-              : 'Resend Code'}
-          </button>
+        {/* Trust badges */}
+        <div className="mt-6 flex items-center justify-center gap-5">
+          {[
+            { icon: ShieldCheck, label: 'SSL Secured' },
+            { icon: Hexagon, label: 'End-to-end encrypted' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-1.5 text-zinc-600">
+              <Icon size={11} />
+              <span className="text-[10px] font-medium">{label}</span>
+            </div>
+          ))}
         </div>
-
-        {/* Back to login */}
-        <div className="mt-4 text-center">
-          <Link
-            to="/login"
-            onClick={() => useAuthStore.getState().logout()}
-            className="inline-flex items-center gap-2 text-xs text-zinc-400 hover:text-black transition-colors"
-          >
-            <ArrowLeft size={13} />
-            Use a different account
-          </Link>
-        </div>
-
-        {/* Hint */}
-        <p className="mt-6 text-[10px] text-zinc-400 text-center leading-relaxed">
-          Check your spam folder if you don't see it.
-          The code expires in <strong>10 minutes</strong>.
-        </p>
       </div>
     </div>
   );

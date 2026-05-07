@@ -55,9 +55,9 @@ export const WEATHER_CONDITIONS = [
 
 // Time Intervals
 export const REFRESH_INTERVALS = {
-  LOCATION: 5000, // 5 seconds
-  SHIPMENT: 10000, // 10 seconds
-  ANALYTICS: 30000, // 30 seconds
+  LOCATION: 5000,
+  SHIPMENT: 10000, 
+  ANALYTICS: 30000, 
 };
 
 // Map Configuration

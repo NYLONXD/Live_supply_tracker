@@ -18,8 +18,9 @@ export default function ForgotPassword() {
     try {
       await authAPI.forgotPassword({ email });
       setSent(true);
-    } catch {
-      toast.error('Something went wrong. Please try again.');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Something went wrong. Please try again.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

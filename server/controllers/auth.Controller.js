@@ -233,11 +233,16 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
 
-  await sendPasswordResetEmail({
+  const sent = await sendPasswordResetEmail({
     to:       user.email,
     name:     user.displayName || 'there',
     resetUrl,
   });
+
+  if (!sent) {
+    logger.error(`Failed to send password reset email to ${user.email}`);
+    return res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+  }
 
   res.json({ message: 'If that email exists, a reset link has been sent.' });
 });
